@@ -1,50 +1,199 @@
-# Welcome to your Expo app 👋
+# eRoyal - Housing Society Management System
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+**100% FREE Firebase-based application** for managing housing society operations.
 
-## Get started
+## 💰 Cost: $0.00 - Completely FREE!
 
-1. Install dependencies
+- ✅ **Firebase Firestore** - FREE 1GB database
+- ✅ **Firebase Authentication** - Unlimited users FREE
+- ✅ **Firebase Storage** - FREE 5GB for images
+- ✅ **No Credit Card Required!**
 
-   ```bash
-   npm install
-   ```
+---
 
-2. Start the app
+## ⚡ Quick Setup (3 Minutes)
 
-   ```bash
-   npx expo start
-   ```
+```powershell
+# 1. Install dependencies
+npm install
 
-In the output, you'll find options to open the app in a
+# 2. Setup Firebase (see docs/FIREBASE_SETUP.md)
+#    - Enable Authentication (Email/Password)
+#    - Enable Firestore Database
+#    - Enable Firebase Storage
+#    - Deploy security rules
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+# 3. Start app
+npm start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+**That's it!** 🎉
 
-## Learn more
+---
 
-To learn more about developing your project with Expo, look at the following resources:
+## 🏗️ Project Structure
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```
+eRoyal/
+├── app/                      # Expo Router screens
+│   ├── (admin)/             # Admin-only screens
+│   ├── (resident)/          # Resident screens
+│   ├── (security)/          # Security screens
+│   └── (auth)/              # Login/Signup
+│
+├── src/                      # Source code
+│   ├── components/          # UI components
+│   ├── contexts/            # Auth context
+│   ├── services/            # Firestore services
+│   └── types/               # TypeScript types
+│
+├── assets/                   # Images, fonts
+├── docs/                     # Documentation
+└── README.md                 # This file
+```
 
-## Join the community
+---
 
-Join our community of developers creating universal apps.
+## 🔥 Firebase Architecture
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### **Firestore Database (FREE)**
+All app data stored in Firestore collections:
+- `admins/*` - Admin users
+- `residents/*` - Resident users
+- `security_staff/*` - Security personnel
+- `announcements/*` - Community announcements
+- `complaints/*` - Resident complaints
+- `bills/*` - Monthly bills
+- `vehicles/*` - Vehicle logs
+
+### **Firebase Storage (FREE)**
+Images stored in Firebase Storage:
+- `announcements/` - Announcement photos
+- `complaints/` - Complaint images
+- `profiles/` - User avatars
+
+### **Firebase Auth (FREE)**
+- Email/Password authentication
+- Role-based access (admin, resident, security)
+
+**Setup Guide**: [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md)
+
+---
+
+## 📱 Features
+
+### For Admins
+- ✅ User management (create residents, security, admins)
+- ✅ Announcement broadcasting with images
+- ✅ Bill generation and management
+- ✅ Complaint tracking and resolution
+- ✅ Vehicle log monitoring
+
+### For Residents
+- ✅ View announcements
+- ✅ Submit complaints with images
+- ✅ View and pay bills
+- ✅ Track vehicle entries/exits
+
+### For Security
+- ✅ Log vehicle entries/exits
+- ✅ View active vehicles
+- ✅ Visitor management
+
+---
+
+## 🛠️ Tech Stack
+
+- **Frontend**: React Native + Expo
+- **Navigation**: Expo Router
+- **Database**: Firebase Firestore
+- **Storage**: Firebase Storage
+- **Authentication**: Firebase Auth
+- **Language**: TypeScript
+
+---
+
+## 📝 Key Files
+
+- `firebaseConfig.js` - Firebase initialization
+- `app.json` - Expo configuration
+- `src/services/` - Firestore data services
+- `src/contexts/AuthContext.tsx` - Authentication logic
+
+---
+
+## 📚 Documentation
+
+- **[Firebase Setup Guide](docs/FIREBASE_SETUP.md)** - Complete Firebase configuration
+- **[Firebase Setup Checklist](docs/FIREBASE_SETUP_CHECKLIST.md)** - Quick checklist
+- **[Testing Guide](docs/TESTING_GUIDE.md)** - How to test the app
+
+---
+
+## 🚀 Development
+
+```powershell
+# Start development server
+npm start
+
+# Run on Android
+npm run android
+
+# Run on iOS
+npm run ios
+
+# Run on web
+npm run web
+```
+
+---
+
+## 🧪 Testing
+
+1. Create an admin account first
+2. Login and test all features
+3. Check Firestore console for data
+4. Verify images appear in Storage
+
+---
+
+## 📦 Project Depend encies
+
+- React Native + Expo
+- Firebase SDK (Auth, Firestore, Storage)
+- Expo Router
+- React Native Picker
+- Expo Image Picker
+
+---
+
+## 🔐 Security
+
+- Firestore security rules enforce permissions
+- Storage rules require authentication
+- Role-based access control
+- All data encrypted in transit (HTTPS)
+
+---
+
+## 💡 Why Firebase?
+
+- ✅ **100% FREE** for small apps
+- ✅ **No servers** to manage
+- ✅ **Scales automatically**
+- ✅ **Real-time updates**
+- ✅ **Built-in authentication**
+- ✅ **Global CDN** for images
+
+---
+
+## 📄 License
+
+Private project - All rights reserved
+
+---
+
+**Version**: 2.0.0 (Firebase-Only)  
+**Last Updated**: December 2025
+
+🏠 eRoyal Housing Society Management System
