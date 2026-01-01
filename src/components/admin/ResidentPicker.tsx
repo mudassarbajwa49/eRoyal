@@ -3,7 +3,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { getAllResidents } from '../../services/userService';
 import { UserProfile } from '../../types';
 
 interface ResidentPickerProps {
@@ -35,9 +34,10 @@ export const ResidentPicker: React.FC<ResidentPickerProps> = ({
 
     const loadResidents = async () => {
         setLoading(true);
-        const data = await getAllResidents();
-        setResidents(data);
-        setFilteredResidents(data);
+        const data = await getAllUsers();
+        const residents = data.filter((user: UserProfile) => user.role === 'resident');
+        setResidents(residents);
+        setFilteredResidents(residents);
         setLoading(false);
     };
 

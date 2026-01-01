@@ -10,7 +10,7 @@ import { Button } from '../../../src/components/common/Button';
 import { Card } from '../../../src/components/common/Card';
 import { LoadingSpinner } from '../../../src/components/common/LoadingSpinner';
 import { useAuth } from '../../../src/contexts/AuthContext';
-import { updateComplaintStatus } from '../../../src/services/complaintService';
+import { resolveComplaintWithCharge, updateComplaintStatus } from '../../../src/services/ComplaintManagementService';
 import { Complaint, ComplaintStatus } from '../../../src/types';
 
 export default function ComplaintDetailScreen() {
@@ -21,6 +21,7 @@ export default function ComplaintDetailScreen() {
     const [loading, setLoading] = useState(true);
     const [updating, setUpdating] = useState(false);
     const [notes, setNotes] = useState('');
+    const [chargeAmount, setChargeAmount] = useState('');
 
     useEffect(() => {
         loadComplaint();
@@ -70,6 +71,44 @@ export default function ComplaintDetailScreen() {
             router.back();
         } else {
             window.alert(result.error || 'Failed to update complaint');
+        }
+    };
+
+    const handleResolveWithCharge = async () => {
+        if (!userProfile || !complaint) return;
+
+        const charge = chargeAmount.trim() ? parseFloat(chargeAmount) : 0;
+
+        if (chargeAmount.trim() && (isNaN(charge) || charge < 0)) {
+            window.alert('Please enter a valid charge amount');
+            return;
+        }
+
+        const confirmMsg = charge > 0
+            ? `Resolve this complaint and add Rs. ${charge.toLocaleString()} to the resident's monthly bill?`
+            : 'Resolve this complaint without adding any charge?';
+
+        const confirmed = window.confirm(confirmMsg);
+        if (!confirmed) return;
+
+        setUpdating(true);
+
+        const result = await resolveComplaintWithCharge(
+            complaint.id!,
+            notes.trim(),
+            charge > 0 ? charge : null,
+            userProfile.uid,
+            complaint.residentId,
+            complaint.residentName
+        );
+
+        setUpdating(false);
+
+        if (result.success) {
+            window.alert(result.message || 'Complaint resolved!');
+            router.back();
+        } else {
+            window.alert(result.error || 'Failed to resolve complaint');
         }
     };
 
@@ -139,6 +178,15 @@ export default function ComplaintDetailScreen() {
                             <Text style={styles.resolutionNotes}>{complaint.resolutionNotes}</Text>
                         </View>
                     )}
+
+                    {/* Show charge if added to bill */}
+                    {isResolved && complaint.chargeAmount && complaint.chargeAmount > 0 && (
+                        <View style={styles.chargeSection}>
+                            <Text style={styles.label}>Service Charge:</Text>
+                            <Text style={styles.chargeAmount}>Rs. {complaint.chargeAmount.toLocaleString()}</Text>
+                            <Text style={styles.chargeNote}>✓ Added to Monthly Bill</Text>
+                        </View>
+                    )}
                 </Card>
 
                 {/* Admin Actions */}
@@ -160,6 +208,21 @@ export default function ComplaintDetailScreen() {
                             />
                         </View>
 
+                        {/* Charge Amount Input */}
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.inputLabel}>Service Charge (Optional):</Text>
+                            <TextInput
+                                style={styles.textInput}
+                                placeholder="Enter amount in PKR (e.g., 1500)"
+                                value={chargeAmount}
+                                onChangeText={setChargeAmount}
+                                keyboardType="numeric"
+                            />
+                            <Text style={styles.helperText}>
+                                💡 This will be added to the resident's monthly bill
+                            </Text>
+                        </View>
+
                         {/* Action Buttons */}
                         <View style={styles.buttonGroup}>
                             {complaint.status === 'Pending' && (
@@ -173,8 +236,8 @@ export default function ComplaintDetailScreen() {
                             )}
 
                             <Button
-                                title="Mark as Resolved"
-                                onPress={() => handleStatusUpdate('Resolved')}
+                                title="Resolve & Add Charge"
+                                onPress={handleResolveWithCharge}
                                 loading={updating}
                                 fullWidth
                                 variant="success"
@@ -298,5 +361,30 @@ const styles = StyleSheet.create({
         color: '#999',
         textAlign: 'center',
         marginTop: 40,
+    },
+    chargeSection: {
+        marginTop: 16,
+        padding: 12,
+        backgroundColor: '#FFF3E0',
+        borderRadius: 8,
+        borderLeftWidth: 4,
+        borderLeftColor: '#FF9800',
+    },
+    chargeAmount: {
+        fontSize: 24,
+        fontWeight: '700',
+        color: '#F57C00',
+        marginVertical: 4,
+    },
+    chargeNote: {
+        fontSize: 13,
+        color: '#66BB6A',
+        fontWeight: '600',
+    },
+    helperText: {
+        fontSize: 12,
+        color: '#666',
+        marginTop: 6,
+        fontStyle: 'italic',
     },
 });

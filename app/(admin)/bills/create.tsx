@@ -8,7 +8,7 @@ import { ResidentPicker } from '../../../src/components/admin/ResidentPicker';
 import { Button } from '../../../src/components/common/Button';
 import { Card } from '../../../src/components/common/Card';
 import { Input } from '../../../src/components/common/Input';
-import { createBill } from '../../../src/services/billService';
+import { createBill } from '../../../src/services/MonthlyBillingService';
 import { UserProfile } from '../../../src/types';
 
 export default function CreateBillScreen() {

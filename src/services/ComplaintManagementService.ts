@@ -14,7 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../firebaseConfig';
 import { ApiResponse, Complaint, ComplaintStatus, CreateComplaintFormData } from '../types';
-import { uploadImage, uriToBlob } from './storageService';
+import { uploadImage, uriToBlob } from './FirebaseStorageService';
 
 /**
  * Create a new complaint (Resident)
@@ -199,6 +199,178 @@ export const updateComplaintStatus = async (
         return {
             success: false,
             error: 'Failed to update complaint status',
+        };
+    }
+};
+
+/**
+ * Resolve complaint with optional charge (Admin)
+ * Automatically adds charge to resident's current monthly bill
+ */
+export const resolveComplaintWithCharge = async (
+    complaintId: string,
+    resolutionNotes: string,
+    chargeAmount: number | null,
+    adminUid: string,
+    residentId: string,
+    residentName: string
+): Promise<ApiResponse> => {
+    try {
+        const { addComplaintChargeToBill, getResidentCurrentBill } = await import('./MonthlyBillingService');
+        const { getDoc } = await import('firebase/firestore');
+
+        // Get complaint details
+        const complaintDoc = await getDoc(doc(db, 'complaints', complaintId));
+        if (!complaintDoc.exists()) {
+            return {
+                success: false,
+                error: 'Complaint not found',
+            };
+        }
+
+        const complaint = complaintDoc.data() as Complaint;
+
+        // Check if already resolved with charge
+        if (complaint.addedToBill) {
+            return {
+                success: false,
+                error: 'Charge already added to bill for this complaint',
+            };
+        }
+
+        const complaintRef = doc(db, 'complaints', complaintId);
+        let billId: string | null = null;
+
+        // If charge amount is provided, add to bill
+        if (chargeAmount && chargeAmount > 0) {
+            // Get current month in YYYY-MM format
+            const now = new Date();
+            const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+            // Find or get current month's bill
+            const currentBill = await getResidentCurrentBill(residentId, currentMonth);
+
+            if (currentBill && currentBill.id) {
+                billId = currentBill.id;
+
+                // Add complaint charge to bill
+                const billResult = await addComplaintChargeToBill(billId, {
+                    complaintId,
+                    complaintNumber: complaint.complaintNumber,
+                    description: complaint.title,
+                    amount: chargeAmount,
+                });
+
+                if (!billResult.success) {
+                    return {
+                        success: false,
+                        error: 'Failed to add charge to bill',
+                    };
+                }
+
+                // Update complaint with charge info
+                await updateDoc(complaintRef, {
+                    status: 'Resolved' as ComplaintStatus,
+                    resolutionNotes: resolutionNotes || null,
+                    resolvedBy: adminUid,
+                    chargeAmount,
+                    addedToBill: true,
+                    billId,
+                    updatedAt: serverTimestamp(),
+                    resolvedAt: serverTimestamp(),
+                });
+
+                return {
+                    success: true,
+                    message: `Complaint resolved. Rs. ${chargeAmount} added to monthly bill.`,
+                };
+            } else {
+                return {
+                    success: false,
+                    error: 'No active bill found for current month. Please generate monthly bills first.',
+                };
+            }
+        } else {
+            // Resolve without charge
+            await updateDoc(complaintRef, {
+                status: 'Resolved' as ComplaintStatus,
+                resolutionNotes: resolutionNotes || null,
+                resolvedBy: adminUid,
+                updatedAt: serverTimestamp(),
+                resolvedAt: serverTimestamp(),
+            });
+
+            return {
+                success: true,
+                message: 'Complaint resolved successfully.',
+            };
+        }
+    } catch (error) {
+        console.error('Error resolving complaint with charge:', error);
+        return {
+            success: false,
+            error: 'Failed to resolve complaint',
+        };
+    }
+};
+/**
+ * Add charge to complaint and link to bill (Admin)
+ */
+export const addChargeToComplaint = async (
+    complaintId: string,
+    amount: number,
+    adminId: string,
+    billId: string
+): Promise<ApiResponse> => {
+    try {
+        const complaintRef = doc(db, 'complaints', complaintId);
+
+        await updateDoc(complaintRef, {
+            chargeAmount: amount,
+            addedToBill: true,
+            billId,
+            updatedAt: serverTimestamp(),
+        });
+
+        return {
+            success: true,
+            message: `Charge of Rs. ${amount} added to complaint`,
+        };
+    } catch (error) {
+        console.error('Error adding charge to complaint:', error);
+        return {
+            success: false,
+            error: 'Failed to add charge to complaint',
+        };
+    }
+};
+
+/**
+ * Remove charge from complaint (Admin)
+ */
+export const removeChargeFromComplaint = async (
+    complaintId: string,
+    adminId: string
+): Promise<ApiResponse> => {
+    try {
+        const complaintRef = doc(db, 'complaints', complaintId);
+
+        await updateDoc(complaintRef, {
+            chargeAmount: null,
+            addedToBill: false,
+            billId: null,
+            updatedAt: serverTimestamp(),
+        });
+
+        return {
+            success: true,
+            message: 'Charge removed from complaint',
+        };
+    } catch (error) {
+        console.error('Error removing charge from complaint:', error);
+        return {
+            success: false,
+            error: 'Failed to remove charge from complaint',
         };
     }
 };

@@ -11,7 +11,7 @@ import {
     getApprovedListings,
     getPendingListings,
     rejectListing
-} from '../../../src/services/listingService';
+} from '../../../src/services/MarketplaceListingService';
 import { Listing } from '../../../src/types';
 
 export default function MarketplaceIndex() {
@@ -75,7 +75,7 @@ export default function MarketplaceIndex() {
                 {
                     text: 'Reject',
                     style: 'destructive',
-                    onPress: async (reason) => {
+                    onPress: async (reason?: string) => {
                         if (!reason || !reason.trim()) {
                             Alert.alert('Error', 'Please provide a rejection reason');
                             return;

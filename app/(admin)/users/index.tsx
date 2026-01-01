@@ -1,27 +1,39 @@
-// User Management Index (Admin)
-// Navigate to create user screen and view existing users
-
-// Navigate to create user screen and view existing users
+/**
+ * Admin Users Management
+ * Create, view, and manage all user accounts
+ * 
+ * This screen shows:
+ * - List of all residents and security staff
+ * - Real-time updates when users are added/deleted
+ * - Create new user button
+ * - Delete user functionality
+ */
 
 import { useRouter } from 'expo-router';
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
-import React, { useEffect, useState } from 'react';
+import { collection, deleteDoc, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
+import React, { useCallback, useMemo } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { db } from '../../../firebaseConfig';
 import { Button } from '../../../src/components/common/Button';
 import { Card } from '../../../src/components/common/Card';
 import { LoadingSpinner } from '../../../src/components/common/LoadingSpinner';
+import { useBreakpoint } from '../../../src/hooks/useResponsive';
 import { UserProfile } from '../../../src/types';
+import { borderRadius, fontSize, spacing } from '../../../src/utils/responsive';
 
 export default function UsersIndex() {
     const router = useRouter();
-    const [users, setUsers] = useState<UserProfile[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
-    const [activeTab, setActiveTab] = useState<'resident' | 'security'>('resident');
+    const breakpoint = useBreakpoint();
+    const [users, setUsers] = React.useState<UserProfile[]>([]);
+    const [loading, setLoading] = React.useState(true);
+    const [refreshing, setRefreshing] = React.useState(false);
+    const [activeTab, setActiveTab] = React.useState<'resident' | 'security'>('resident');
 
-    // Real-time Firestore listeners for automatic updates
-    useEffect(() => {
+    /**
+     * Set up real-time listeners for all user collections
+     * Firestore automatically updates the UI when data changes
+     */
+    React.useEffect(() => {
         console.log('🔄 Setting up real-time user listeners...');
 
         const unsubscribeCallbacks: (() => void)[] = [];
@@ -61,17 +73,20 @@ export default function UsersIndex() {
 
         setLoading(false);
 
-        // Cleanup listeners on unmount
+        // Cleanup listeners when component unmounts
         return () => {
             console.log('🧹 Cleaning up user listeners');
             unsubscribeCallbacks.forEach(unsub => unsub());
         };
     }, []);
 
-    // Helper to merge user data from different collections
+    /**
+     * Merge user data from different collections
+     * This keeps all users in one list while maintaining real-time updates
+     */
     const updateUsers = (newData: UserProfile[], source: string) => {
         setUsers(prevUsers => {
-            // Remove users from this source
+            // Remove users from this source (they'll be re-added with newData)
             const filtered = prevUsers.filter(u => {
                 if (source === 'residents') return u.role !== 'resident';
                 if (source === 'security') return u.role !== 'security';
@@ -84,14 +99,22 @@ export default function UsersIndex() {
         });
     };
 
+    /**
+     * Handle pull-to-refresh
+     * Data updates automatically via real-time listeners
+     */
     const onRefresh = async () => {
         setRefreshing(true);
-        // Data refreshes automatically via listeners, just show the animation
+        // Just show animation - data refreshes automatically
         setTimeout(() => setRefreshing(false), 500);
     };
 
+    /**
+     * Delete a user from Firestore
+     * Includes confirmation and error handling
+     */
     const handleDeleteUser = async (user: UserProfile) => {
-        // Web-compatible confirmation
+        // Confirm deletion
         const confirmed = window.confirm(
             `Are you sure you want to delete ${user.name}?\n\nThis action cannot be undone and will:\n• Remove user from database\n• Delete all user data`
         );
@@ -101,9 +124,7 @@ export default function UsersIndex() {
         console.log('🗑️ Starting deletion for user:', user);
 
         try {
-            const { deleteDoc, doc } = await import('firebase/firestore');
-
-            // Get collection name based on role
+            // Get the correct collection name based on role
             const getCollectionName = (role: string) => {
                 if (role === 'resident') return 'residents';
                 if (role === 'security') return 'security_staff';
@@ -118,7 +139,7 @@ export default function UsersIndex() {
             await deleteDoc(doc(db, collectionName, user.uid));
             console.log(`✅ Successfully deleted from ${collectionName}`);
 
-            // Also delete from backup 'users' collection
+            // Also delete from backup 'users' collection (if exists)
             try {
                 await deleteDoc(doc(db, 'users', user.uid));
                 console.log('✅ Successfully deleted from users backup');
@@ -126,13 +147,10 @@ export default function UsersIndex() {
                 console.log('ℹ️ No backup user doc to delete (this is okay)');
             }
 
-            // Show success message
             console.log('✅ Deletion complete!');
             window.alert(`${user.name} has been deleted successfully`);
         } catch (error: any) {
             console.error('❌ ERROR deleting user:', error);
-            console.error('Error code:', error.code);
-            console.error('Error message:', error.message);
 
             let errorMessage = 'Failed to delete user. ';
             if (error.code === 'permission-denied') {
@@ -145,35 +163,72 @@ export default function UsersIndex() {
         }
     };
 
-    const filteredUsers = users.filter(user => user.role === activeTab);
+    // Filter users by active tab (memoized for performance)
+    const filteredUsers = useMemo(() => {
+        return users.filter(user => user.role === activeTab);
+    }, [users, activeTab]);
 
-    const renderItem = ({ item }: { item: UserProfile }) => (
-        <Card style={styles.userCard}>
+    // Count users by role (memoized for tab badges)
+    const counts = useMemo(() => ({
+        resident: users.filter(u => u.role === 'resident').length,
+        security: users.filter(u => u.role === 'security').length,
+    }), [users]);
+
+    /**
+     * Render a single user card
+     * Memoized to prevent unnecessary re-renders
+     */
+    const renderItem = useCallback(({ item }: { item: UserProfile }) => (
+        <Card style={{ ...styles.userCard, marginBottom: spacing.md, padding: spacing.md }}>
             <View style={styles.userInfo}>
-                <View style={[styles.avatarContainer, { backgroundColor: activeTab === 'resident' ? '#E8F5E9' : '#FFF3E0' }]}>
-                    <Text style={[styles.avatarText, { color: activeTab === 'resident' ? '#2E7D32' : '#EF6C00' }]}>
+                {/* Avatar with first letter */}
+                <View style={{
+                    ...styles.avatarContainer,
+                    backgroundColor: activeTab === 'resident' ? '#E8F5E9' : '#FFF3E0',
+                    borderRadius: borderRadius.full,
+                    marginRight: spacing.md
+                }}>
+                    <Text style={{
+                        ...styles.avatarText,
+                        color: activeTab === 'resident' ? '#2E7D32' : '#EF6C00',
+                        fontSize: fontSize.xl
+                    }}>
                         {item.name.charAt(0).toUpperCase()}
                     </Text>
                 </View>
+
+                {/* User details */}
                 <View style={styles.userDetails}>
-                    <Text style={styles.userName}>{item.name}</Text>
-                    <Text style={styles.userEmail}>{item.email}</Text>
+                    <Text style={{ ...styles.userName, fontSize: fontSize.base }}>
+                        {item.name}
+                    </Text>
+                    <Text style={{ ...styles.userEmail, fontSize: fontSize.sm }}>
+                        {item.email}
+                    </Text>
                     {item.role === 'resident' && item.houseNo && (
-                        <Text style={styles.userMeta}>House: {item.houseNo}</Text>
+                        <Text style={{ ...styles.userMeta, fontSize: fontSize.xs }}>
+                            House: {item.houseNo}
+                        </Text>
                     )}
                     {item.role === 'security' && (
-                        <Text style={styles.userMeta}>Security Personnel</Text>
+                        <Text style={{ ...styles.userMeta, fontSize: fontSize.xs }}>
+                            Security Personnel
+                        </Text>
                     )}
                 </View>
+
+                {/* Delete button */}
                 <TouchableOpacity
-                    style={styles.deleteButton}
+                    style={{ ...styles.deleteButton, borderRadius: borderRadius.md, padding: spacing.sm }}
                     onPress={() => handleDeleteUser(item)}
                 >
                     <Text style={styles.deleteButtonText}>🗑️</Text>
                 </TouchableOpacity>
             </View>
         </Card>
-    );
+    ), [activeTab]);
+
+    const keyExtractor = useCallback((item: UserProfile) => item.uid, []);
 
     if (loading) {
         return <LoadingSpinner message="Loading users..." />;
@@ -181,48 +236,79 @@ export default function UsersIndex() {
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
+            {/* Header with Create Button */}
+            <View style={{ ...styles.header, padding: spacing.lg, paddingBottom: 0 }}>
                 <Button
                     title="Create New User"
                     onPress={() => router.push('/(admin)/users/create')}
                     fullWidth
-                    style={styles.createButton}
+                    style={{ marginBottom: spacing.lg }}
                 />
 
-                {/* Tabs */}
-                <View style={styles.tabContainer}>
+                {/* Tab Navigation */}
+                <View style={{
+                    ...styles.tabContainer,
+                    borderRadius: borderRadius.md,
+                    padding: spacing.xs,
+                    marginBottom: spacing.sm
+                }}>
                     <TouchableOpacity
-                        style={[styles.tab, activeTab === 'resident' && styles.activeTab]}
+                        style={{
+                            ...styles.tab,
+                            ...(activeTab === 'resident' && styles.activeTab),
+                            borderRadius: borderRadius.sm,
+                            paddingVertical: spacing.sm
+                        }}
                         onPress={() => setActiveTab('resident')}
                     >
-                        <Text style={[styles.tabText, activeTab === 'resident' && styles.activeTabText]}>
-                            Residents ({users.filter(u => u.role === 'resident').length})
+                        <Text style={{
+                            ...styles.tabText,
+                            ...(activeTab === 'resident' && styles.activeTabText),
+                            fontSize: breakpoint.mobile ? fontSize.sm : fontSize.base
+                        }}>
+                            Residents ({counts.resident})
                         </Text>
                     </TouchableOpacity>
+
                     <TouchableOpacity
-                        style={[styles.tab, activeTab === 'security' && styles.activeTab]}
+                        style={{
+                            ...styles.tab,
+                            ...(activeTab === 'security' && styles.activeTab),
+                            borderRadius: borderRadius.sm,
+                            paddingVertical: spacing.sm
+                        }}
                         onPress={() => setActiveTab('security')}
                     >
-                        <Text style={[styles.tabText, activeTab === 'security' && styles.activeTabText]}>
-                            Security ({users.filter(u => u.role === 'security').length})
+                        <Text style={{
+                            ...styles.tabText,
+                            ...(activeTab === 'security' && styles.activeTabText),
+                            fontSize: breakpoint.mobile ? fontSize.sm : fontSize.base
+                        }}>
+                            Security ({counts.security})
                         </Text>
                     </TouchableOpacity>
                 </View>
             </View>
 
+            {/* Users List - Already uses FlatList for virtualization */}
             <FlatList
                 data={filteredUsers}
                 renderItem={renderItem}
-                keyExtractor={(item) => item.uid}
-                contentContainerStyle={styles.listContent}
+                keyExtractor={keyExtractor}
+                contentContainerStyle={{ padding: spacing.lg, paddingTop: spacing.sm }}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
-                        <Text style={styles.emptyText}>
+                        <Text style={{ ...styles.emptyText, fontSize: fontSize.base }}>
                             No {activeTab}s found
                         </Text>
                     </View>
                 }
+                // Performance optimizations
+                removeClippedSubviews
+                maxToRenderPerBatch={10}
+                windowSize={10}
+                initialNumToRender={8}
             />
         </View>
     );
@@ -234,25 +320,15 @@ const styles = StyleSheet.create({
         backgroundColor: '#F5F7FA'
     },
     header: {
-        padding: 16,
-        paddingBottom: 0,
         backgroundColor: '#F5F7FA'
-    },
-    createButton: {
-        marginBottom: 16
     },
     tabContainer: {
         flexDirection: 'row',
         backgroundColor: '#fff',
-        borderRadius: 8,
-        padding: 4,
-        marginBottom: 8
     },
     tab: {
         flex: 1,
-        paddingVertical: 10,
         alignItems: 'center',
-        borderRadius: 6
     },
     activeTab: {
         backgroundColor: '#007AFF',
@@ -263,20 +339,14 @@ const styles = StyleSheet.create({
         elevation: 2
     },
     tabText: {
-        fontSize: 14,
         fontWeight: '600',
         color: '#666'
     },
     activeTabText: {
         color: '#fff'
     },
-    listContent: {
-        padding: 16,
-        paddingTop: 8
-    },
     userCard: {
-        marginBottom: 12,
-        padding: 12
+        // Padding and margin handled inline
     },
     userInfo: {
         flexDirection: 'row',
@@ -285,40 +355,33 @@ const styles = StyleSheet.create({
     avatarContainer: {
         width: 50,
         height: 50,
-        borderRadius: 25,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 12
+        // Other styles handled inline
     },
     avatarText: {
-        fontSize: 20,
         fontWeight: '700'
     },
     userDetails: {
         flex: 1
     },
     userName: {
-        fontSize: 16,
         fontWeight: '600',
         color: '#333',
         marginBottom: 2
     },
     userEmail: {
-        fontSize: 14,
         color: '#666',
         marginBottom: 2
     },
     userMeta: {
-        fontSize: 12,
         color: '#8E8E93'
     },
     deleteButton: {
-        padding: 8,
-        marginLeft: 8,
-        borderRadius: 8,
         backgroundColor: '#FFEBEE',
         justifyContent: 'center',
-        alignItems: 'center'
+        alignItems: 'center',
+        marginLeft: 8
     },
     deleteButtonText: {
         fontSize: 20
@@ -328,7 +391,6 @@ const styles = StyleSheet.create({
         alignItems: 'center'
     },
     emptyText: {
-        fontSize: 16,
         color: '#8E8E93'
     }
 });

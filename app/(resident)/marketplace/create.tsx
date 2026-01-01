@@ -9,7 +9,7 @@ import { Button } from '../../../src/components/common/Button';
 import { Card } from '../../../src/components/common/Card';
 import { Input } from '../../../src/components/common/Input';
 import { useAuth } from '../../../src/contexts/AuthContext';
-import { createListing } from '../../../src/services/listingService';
+import { createListing } from '../../../src/services/MarketplaceListingService';
 import { ListingType } from '../../../src/types';
 
 export default function CreateListingScreen() {
@@ -54,7 +54,7 @@ export default function CreateListingScreen() {
         return Object.keys(newErrors).length === 0;
     };
 
-    const pickImages = async () => {
+    const pickImage = async () => {
         const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
         if (!permissionResult.granted) {
@@ -62,19 +62,22 @@ export default function CreateListingScreen() {
             return;
         }
 
-        const result = await ImagePicker.launchImagePickerAsync({
+        const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsMultipleSelection: true,
-            quality: 0.8
+            allowsEditing: true,
+            aspect: [16, 9],
+            quality: 0.8,
+            allowsMultipleSelection: true
         });
 
         if (!result.canceled) {
-            setSelectedImages([...selectedImages, ...result.assets.map(a => a.uri)]);
+            const uris = result.assets.map((a: any) => a.uri);
+            setPhotoUris([...photoUris, ...uris]);
         }
     };
 
     const removeImage = (index: number) => {
-        setSelectedImages(selectedImages.filter((_, i) => i !== index));
+        setPhotoUris(photoUris.filter((_, i) => i !== index));
     };
 
     const handleSubmit = async () => {

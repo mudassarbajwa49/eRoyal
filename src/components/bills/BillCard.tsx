@@ -2,7 +2,7 @@
 // Displays individual bill information
 
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Bill } from '../../types';
 import { Button } from '../common/Button';
 import { Card } from '../common/Card';
@@ -10,13 +10,15 @@ import { StatusBadge } from '../common/StatusBadge';
 
 interface BillCardProps {
     bill: Bill;
+    onPress?: (bill: Bill) => void;
     onPayPress?: (billId: string) => void;
     onViewProofPress?: (proofUrl: string) => void;
     isAdmin?: boolean;
 }
 
-export const BillCard: React.FC<BillCardProps> = ({
+const BillCard: React.FC<BillCardProps> = ({
     bill,
+    onPress,
     onPayPress,
     onViewProofPress,
     isAdmin = false
@@ -27,7 +29,7 @@ export const BillCard: React.FC<BillCardProps> = ({
         return date.toLocaleDateString();
     };
 
-    return (
+    const CardContent = (
         <Card>
             <View style={styles.header}>
                 <View>
@@ -79,6 +81,19 @@ export const BillCard: React.FC<BillCardProps> = ({
             )}
         </Card>
     );
+
+    if (onPress) {
+        return (
+            <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => onPress(bill)}
+            >
+                {CardContent}
+            </TouchableOpacity>
+        );
+    }
+
+    return CardContent;
 };
 
 const styles = StyleSheet.create({
@@ -125,3 +140,19 @@ const styles = StyleSheet.create({
         marginTop: 12
     }
 });
+
+// Memoize component to prevent unnecessary re-renders
+export default React.memo(BillCard, (prevProps, nextProps) => {
+    // Custom comparison function - only re-render if bill data or callbacks change
+    return (
+        prevProps.bill.id === nextProps.bill.id &&
+        prevProps.bill.status === nextProps.bill.status &&
+        prevProps.bill.amount === nextProps.bill.amount &&
+        prevProps.bill.proofUrl === nextProps.bill.proofUrl &&
+        prevProps.isAdmin === nextProps.isAdmin
+    );
+});
+
+// Also export non-memoized version for backwards compatibility
+export { BillCard };
+
