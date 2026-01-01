@@ -68,7 +68,9 @@ export default function ResidentLayout() {
                 name="bills"
                 options={{
                     title: 'Bills',
-                    href: null,
+                    tabBarIcon: ({ color, focused }) => (
+                        <Text style={[styles.icon, { opacity: focused ? 1 : 0.6 }]}>💵</Text>
+                    ),
                     headerShown: false,
                 }}
             />
@@ -76,7 +78,9 @@ export default function ResidentLayout() {
                 name="complaints"
                 options={{
                     title: 'Complaints',
-                    href: null,
+                    tabBarIcon: ({ color, focused }) => (
+                        <Text style={[styles.icon, { opacity: focused ? 1 : 0.6 }]}>🛠️</Text>
+                    ),
                     headerShown: false,
                 }}
             />

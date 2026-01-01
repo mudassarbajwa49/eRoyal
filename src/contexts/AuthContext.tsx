@@ -17,18 +17,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [userRole, setUserRole] = useState<UserRole | null>(null);
     const [loading, setLoading] = useState(true);
 
-    // Fetch user profile from Firestore (checks role-specific collections)
+    //Fetch user profile from Firestore
+    // OPTIMIZED: Check 'users' collection first (single read) instead of trying all collections
     const fetchUserProfile = async (uid: string): Promise<User | null> => {
         try {
-            // Try role-specific collections first
-            const collections = ['residents', 'admins', 'security_staff', 'users'];
+            // First, try the 'users' collection (most efficient - single read)
+            const userDoc = await getDoc(doc(db, 'users', uid));
 
-            for (const collectionName of collections) {
-                const userDoc = await getDoc(doc(db, collectionName, uid));
+            if (userDoc.exists()) {
+                const userData = userDoc.data() as User;
+                console.log('✅ User profile found in users collection (fast path)');
+                return userData;
+            }
 
-                if (userDoc.exists()) {
-                    const userData = userDoc.data() as User;
-                    console.log(`✅ User profile found in ${collectionName} collection`);
+            // Fallback: If not in 'users', check role-specific collections
+            // This handles legacy users created before 'users' collection was added
+            console.log('⚠️ User not in users collection, checking role-specific collections...');
+            const roleCollections = ['residents', 'admins', 'security_staff'];
+
+            for (const collectionName of roleCollections) {
+                const roleDoc = await getDoc(doc(db, collectionName, uid));
+
+                if (roleDoc.exists()) {
+                    const userData = roleDoc.data() as User;
+                    console.log(`✅ User profile found in ${collectionName} collection (fallback)`);
                     return userData;
                 }
             }

@@ -3,7 +3,7 @@
 
 import { deleteApp, initializeApp } from 'firebase/app';
 import { createUserWithEmailAndPassword, initializeAuth, inMemoryPersistence } from 'firebase/auth';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, serverTimestamp } from 'firebase/firestore';
 import { db, firebaseConfig } from '../../firebaseConfig';
 import { ApiResponse, CreateUserFormData } from '../types';
 
@@ -73,13 +73,19 @@ export const createUserAccount = async (
             createdBy: createdByUid
         };
 
-        // Save to role-specific collection
-        await setDoc(doc(db, collectionName, user.uid), userProfileData);
-        console.log(`✅ Firestore profile created in ${collectionName}`);
+        // Use batch write for atomicity - both writes succeed or both fail
+        // This prevents data inconsistency if network fails between writes
+        const batch = writeBatch(db);
 
-        // Also save to main 'users' collection for backward compatibility
-        await setDoc(doc(db, 'users', user.uid), userProfileData);
-        console.log('✅ Backup saved to users collection for compatibility');
+        // Add write to role-specific collection
+        batch.set(doc(db, collectionName, user.uid), userProfileData);
+
+        // Add write to main 'users' collection for backward compatibility
+        batch.set(doc(db, 'users', user.uid), userProfileData);
+
+        // Commit both writes atomically
+        await batch.commit();
+        console.log(`✅ User profile created atomically in ${collectionName} and users collections`);
 
         // Retrieve token or simple success before cleanup
         const userId = user.uid;
