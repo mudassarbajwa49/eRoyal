@@ -1,50 +1,65 @@
-// Admin Dashboard
-// Main dashboard with navigation to all admin features
+/**
+ * Admin Dashboard
+ * Main dashboard with navigation to all admin features
+ * 
+ * This screen shows:
+ * - Welcome message with admin name
+ * - Quick stats (pending bills, complaints, listings)
+ * - Menu grid to navigate to all admin features
+ */
 
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Card } from '../../src/components/common/Card';
 import { LoadingSpinner } from '../../src/components/common/LoadingSpinner';
 import { useAuth } from '../../src/contexts/AuthContext';
-import { getPendingBills } from '../../src/services/billService';
-import { getPendingComplaints } from '../../src/services/complaintService';
-import { getPendingListings } from '../../src/services/listingService';
+import { useBreakpoint } from '../../src/hooks/useResponsive';
+import { getPendingComplaints } from '../../src/services/ComplaintManagementService';
+import { getPendingListings } from '../../src/services/MarketplaceListingService';
+import { getPendingBills } from '../../src/services/MonthlyBillingService';
+import { borderRadius, fontSize, spacing } from '../../src/utils/responsive';
 
 export default function AdminDashboard() {
     const { userProfile } = useAuth();
     const router = useRouter();
-    const [stats, setStats] = useState({
+    const breakpoint = useBreakpoint();
+
+    /**
+     * Load dashboard statistics
+     * This fetches pending items from different services in parallel for speed
+     */
+    const loadStats = async () => {
+        const [bills, complaints, listings] = await Promise.all([
+            getPendingBills(),
+            getPendingComplaints(),
+            getPendingListings()
+        ]);
+
+        return {
+            pendingBills: bills.length,
+            pendingComplaints: complaints.length,
+            pendingListings: listings.length
+        };
+    };
+
+    // Fetch stats on component mount (with caching for performance)
+    const [stats, setStats] = React.useState({
         pendingBills: 0,
         pendingComplaints: 0,
         pendingListings: 0
     });
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = React.useState(true);
 
-    useEffect(() => {
-        loadStats();
+    React.useEffect(() => {
+        loadStats().then(data => {
+            setStats(data);
+            setLoading(false);
+        });
     }, []);
 
-    const loadStats = async () => {
-        try {
-            const [bills, complaints, listings] = await Promise.all([
-                getPendingBills(),
-                getPendingComplaints(),
-                getPendingListings()
-            ]);
-
-            setStats({
-                pendingBills: bills.length,
-                pendingComplaints: complaints.length,
-                pendingListings: listings.length
-            });
-        } catch (error) {
-            console.error('Error loading stats:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
+    // Menu item configuration
+    // Each item has icon, title, description, route, and color
     const menuItems = [
         {
             title: 'User Management',
@@ -99,31 +114,50 @@ export default function AdminDashboard() {
 
     return (
         <ScrollView style={styles.container}>
-            <View style={styles.content}>
-                {/* Welcome Section */}
-                <Card style={styles.welcomeCard}>
-                    <Text style={styles.welcome}>Welcome, {userProfile?.name}!</Text>
-                    <Text style={styles.role}>Administrator</Text>
+            <View style={[styles.content, { padding: spacing.lg }]}>
+
+                {/* Welcome Card */}
+                <Card style={[styles.welcomeCard, { marginBottom: spacing.xl }]}>
+                    <Text style={[styles.welcome, { fontSize: breakpoint.mobile ? fontSize['2xl'] : fontSize['3xl'] }]}>
+                        Welcome, {userProfile?.name}!
+                    </Text>
+                    <Text style={[styles.role, { fontSize: fontSize.base }]}>
+                        Administrator
+                    </Text>
                 </Card>
 
-                {/* Quick Stats */}
-                <View style={styles.statsContainer}>
-                    <View style={styles.statBox}>
-                        <Text style={styles.statNumber}>{stats.pendingBills}</Text>
-                        <Text style={styles.statLabel}>Pending Payments</Text>
+                {/* Quick Statistics */}
+                <View style={[styles.statsContainer, { gap: spacing.md, marginBottom: spacing.xl }]}>
+                    <View style={[styles.statBox, { borderRadius: borderRadius.lg, padding: spacing.lg }]}>
+                        <Text style={[styles.statNumber, { fontSize: breakpoint.mobile ? fontSize['2xl'] : fontSize['3xl'] }]}>
+                            {stats.pendingBills}
+                        </Text>
+                        <Text style={[styles.statLabel, { fontSize: fontSize.xs }]}>
+                            Pending Payments
+                        </Text>
                     </View>
-                    <View style={styles.statBox}>
-                        <Text style={styles.statNumber}>{stats.pendingComplaints}</Text>
-                        <Text style={styles.statLabel}>Open Complaints</Text>
+
+                    <View style={[styles.statBox, { borderRadius: borderRadius.lg, padding: spacing.lg }]}>
+                        <Text style={[styles.statNumber, { fontSize: breakpoint.mobile ? fontSize['2xl'] : fontSize['3xl'] }]}>
+                            {stats.pendingComplaints}
+                        </Text>
+                        <Text style={[styles.statLabel, { fontSize: fontSize.xs }]}>
+                            Open Complaints
+                        </Text>
                     </View>
-                    <View style={styles.statBox}>
-                        <Text style={styles.statNumber}>{stats.pendingListings}</Text>
-                        <Text style={styles.statLabel}>Pending Listings</Text>
+
+                    <View style={[styles.statBox, { borderRadius: borderRadius.lg, padding: spacing.lg }]}>
+                        <Text style={[styles.statNumber, { fontSize: breakpoint.mobile ? fontSize['2xl'] : fontSize['3xl'] }]}>
+                            {stats.pendingListings}
+                        </Text>
+                        <Text style={[styles.statLabel, { fontSize: fontSize.xs }]}>
+                            Pending Listings
+                        </Text>
                     </View>
                 </View>
 
-                {/* Menu Grid */}
-                <View style={styles.menuGrid}>
+                {/* Menu Grid - Responsive layout */}
+                <View style={[styles.menuGrid, { gap: spacing.md }]}>
                     {menuItems.map((item, index) => (
                         <TouchableOpacity
                             key={index}
@@ -131,13 +165,24 @@ export default function AdminDashboard() {
                             onPress={() => router.push(item.route as any)}
                             activeOpacity={0.7}
                         >
-                            <Card style={styles.menuCard}>
+                            <Card style={[styles.menuCard, { padding: spacing.lg }]}>
                                 <Text style={styles.menuIcon}>{item.icon}</Text>
-                                <Text style={styles.menuTitle}>{item.title}</Text>
-                                <Text style={styles.menuDescription}>{item.description}</Text>
+                                <Text style={[styles.menuTitle, { fontSize: fontSize.lg }]}>
+                                    {item.title}
+                                </Text>
+                                <Text style={[styles.menuDescription, { fontSize: fontSize.sm }]}>
+                                    {item.description}
+                                </Text>
+
+                                {/* Badge for pending items */}
                                 {item.badge !== undefined && (
-                                    <View style={[styles.badge, { backgroundColor: item.color }]}>
-                                        <Text style={styles.badgeText}>{item.badge}</Text>
+                                    <View style={[
+                                        styles.badge,
+                                        { backgroundColor: item.color, borderRadius: borderRadius.full }
+                                    ]}>
+                                        <Text style={[styles.badgeText, { fontSize: fontSize.xs }]}>
+                                            {item.badge}
+                                        </Text>
                                     </View>
                                 )}
                             </Card>
@@ -155,31 +200,26 @@ const styles = StyleSheet.create({
         backgroundColor: '#F5F7FA'
     },
     content: {
-        padding: 16
+        // Padding handled by responsive spacing
     },
     welcomeCard: {
-        marginBottom: 20
+        // Margin handled inline with responsive spacing
     },
     welcome: {
-        fontSize: 24,
         fontWeight: '700',
         color: '#333',
         marginBottom: 4
     },
     role: {
-        fontSize: 16,
         color: '#666'
     },
     statsContainer: {
         flexDirection: 'row',
-        gap: 12,
-        marginBottom: 20
+        // Gap and margin handled inline
     },
     statBox: {
         flex: 1,
         backgroundColor: '#fff',
-        padding: 16,
-        borderRadius: 12,
         alignItems: 'center',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -188,37 +228,34 @@ const styles = StyleSheet.create({
         elevation: 3
     },
     statNumber: {
-        fontSize: 28,
         fontWeight: '700',
         color: '#007AFF',
         marginBottom: 4
     },
     statLabel: {
-        fontSize: 12,
         color: '#666',
         textAlign: 'center'
     },
     menuGrid: {
-        gap: 12
+        // Gap handled inline
     },
     menuItem: {
         marginBottom: 4
     },
     menuCard: {
         position: 'relative'
+        // Padding handled inline
     },
     menuIcon: {
         fontSize: 36,
         marginBottom: 12
     },
     menuTitle: {
-        fontSize: 18,
         fontWeight: '600',
         color: '#333',
         marginBottom: 4
     },
     menuDescription: {
-        fontSize: 14,
         color: '#666'
     },
     badge: {
@@ -227,13 +264,11 @@ const styles = StyleSheet.create({
         right: 12,
         width: 28,
         height: 28,
-        borderRadius: 14,
         justifyContent: 'center',
         alignItems: 'center'
     },
     badgeText: {
         color: '#fff',
-        fontSize: 12,
         fontWeight: '700'
     }
 });

@@ -11,7 +11,7 @@ import { Button } from '../../../src/components/common/Button';
 import { Card } from '../../../src/components/common/Card';
 import { LoadingSpinner } from '../../../src/components/common/LoadingSpinner';
 import { StatusBadge } from '../../../src/components/common/StatusBadge';
-import { uploadPaymentProof } from '../../../src/services/billService';
+import { uploadPaymentProof } from '../../../src/services/MonthlyBillingService';
 import { Bill } from '../../../src/types';
 
 export default function BillDetailScreen() {
@@ -49,7 +49,7 @@ export default function BillDetailScreen() {
             return;
         }
 
-        const result = await ImagePicker.launchImagePickerAsync({
+        const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: true,
             aspect: [4, 3],
@@ -114,6 +114,54 @@ export default function BillDetailScreen() {
                             <Text style={styles.label}>Amount Due</Text>
                             <Text style={styles.amount}>Rs. {bill.amount.toLocaleString()}</Text>
                         </View>
+
+                        {/* Bill Breakdown */}
+                        {bill.breakdown && (
+                            <View style={styles.breakdownSection}>
+                                <Text style={styles.breakdownTitle}>Bill Breakdown</Text>
+
+                                <View style={styles.breakdownItem}>
+                                    <Text style={styles.breakdownLabel}>Base Charges</Text>
+                                    <Text style={styles.breakdownValue}>
+                                        Rs. {bill.breakdown.baseCharges.toLocaleString()}
+                                    </Text>
+                                </View>
+
+                                {bill.breakdown.previousDues > 0 && (
+                                    <View style={styles.breakdownItem}>
+                                        <Text style={styles.breakdownLabel}>Previous Dues</Text>
+                                        <Text style={[styles.breakdownValue, styles.dueValue]}>
+                                            Rs. {bill.breakdown.previousDues.toLocaleString()}
+                                        </Text>
+                                    </View>
+                                )}
+
+                                {/* Complaint Charges */}
+                                {bill.breakdown.complaintCharges && bill.breakdown.complaintCharges.length > 0 && (
+                                    <View style={styles.complaintChargesSection}>
+                                        <Text style={styles.sectionLabel}>Complaint Charges</Text>
+                                        {bill.breakdown.complaintCharges.map((charge, index) => (
+                                            <View key={index} style={styles.complaintChargeItem}>
+                                                <View style={styles.complaintDetails}>
+                                                    <Text style={styles.complaintNumber}>{charge.complaintNumber}</Text>
+                                                    <Text style={styles.complaintDesc}>{charge.description}</Text>
+                                                </View>
+                                                <Text style={styles.complaintAmount}>
+                                                    Rs. {charge.amount.toLocaleString()}
+                                                </Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                )}
+
+                                <View style={[styles.breakdownItem, styles.totalItem]}>
+                                    <Text style={styles.totalLabel}>Total Amount</Text>
+                                    <Text style={styles.totalValue}>
+                                        Rs. {bill.breakdown.total.toLocaleString()}
+                                    </Text>
+                                </View>
+                            </View>
+                        )}
 
                         <View style={styles.infoRow}>
                             <Text style={styles.label}>Due Date:</Text>
@@ -260,5 +308,92 @@ const styles = StyleSheet.create({
     },
     button: {
         marginTop: 8
-    }
+    },
+    breakdownSection: {
+        marginTop: 16,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderTopColor: '#EEE',
+    },
+    breakdownTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#333',
+        marginBottom: 12,
+    },
+    breakdownItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 10,
+    },
+    breakdownLabel: {
+        fontSize: 14,
+        color: '#666',
+    },
+    breakdownValue: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#333',
+    },
+    dueValue: {
+        color: '#FF5252',
+    },
+    complaintChargesSection: {
+        marginTop: 12,
+        padding: 12,
+        backgroundColor: '#FFF3E0',
+        borderRadius: 8,
+        borderLeftWidth: 3,
+        borderLeftColor: '#FF9800',
+    },
+    sectionLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#666',
+        marginBottom: 8,
+    },
+    complaintChargeItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 8,
+        paddingBottom: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#FFE0B2',
+    },
+    complaintDetails: {
+        flex: 1,
+        marginRight: 12,
+    },
+    complaintNumber: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#F57C00',
+        marginBottom: 2,
+    },
+    complaintDesc: {
+        fontSize: 13,
+        color: '#666',
+    },
+    complaintAmount: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#F57C00',
+    },
+    totalItem: {
+        marginTop: 12,
+        paddingTop: 12,
+        borderTopWidth: 2,
+        borderTopColor: '#007AFF',
+    },
+    totalLabel: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#333',
+    },
+    totalValue: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#007AFF',
+    },
 });

@@ -1,14 +1,15 @@
 // Resident Marketplace Index
-// View approved listings and own listings
+// Modern marketplace with grid layout and filters
 
 import { Stack, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BorderRadius, Colors, Spacing, Typography } from '../../../constants/designSystem';
 import { Button } from '../../../src/components/common/Button';
-import { LoadingSpinner } from '../../../src/components/common/LoadingSpinner';
+import { SkeletonLoader } from '../../../src/components/common/SkeletonLoader';
 import { ListingCard } from '../../../src/components/marketplace/ListingCard';
 import { useAuth } from '../../../src/contexts/AuthContext';
-import { getApprovedListings, getMyListings } from '../../../src/services/listingService';
+import { getApprovedListings, getMyListings } from '../../../src/services/MarketplaceListingService';
 import { Listing } from '../../../src/types';
 
 export default function MarketplaceIndex() {
@@ -50,7 +51,19 @@ export default function MarketplaceIndex() {
     const keyExtractor = useCallback((item: Listing) => item.id!, []);
 
     if (loading) {
-        return <LoadingSpinner message="Loading marketplace..." />;
+        return (
+            <View style={styles.container}>
+                <View style={styles.header}>
+                    <SkeletonLoader variant="text" />
+                </View>
+                <View style={styles.tabContainer}>
+                    <SkeletonLoader variant="text" />
+                </View>
+                <View style={styles.list}>
+                    <SkeletonLoader variant="card" count={3} />
+                </View>
+            </View>
+        );
     }
 
     const currentListings = activeTab === 'browse' ? approvedListings : myListings;
@@ -59,7 +72,14 @@ export default function MarketplaceIndex() {
         <>
             <Stack.Screen options={{ title: 'Marketplace' }} />
             <View style={styles.container}>
+                {/* Header with CTA */}
                 <View style={styles.header}>
+                    <View style={styles.headerContent}>
+                        <Text style={styles.headerTitle}>Community Marketplace</Text>
+                        <Text style={styles.headerSubtitle}>
+                            Buy, sell, or rent properties
+                        </Text>
+                    </View>
                     <Button
                         title="+ Post Property"
                         onPress={() => router.push('/(resident)/marketplace/create')}
@@ -67,23 +87,27 @@ export default function MarketplaceIndex() {
                     />
                 </View>
 
-                {/* Tabs */}
+                {/* Modern Tabs */}
                 <View style={styles.tabContainer}>
                     <TouchableOpacity
                         style={[styles.tab, activeTab === 'browse' && styles.activeTab]}
                         onPress={() => setActiveTab('browse')}
+                        activeOpacity={0.7}
                     >
                         <Text style={[styles.tabText, activeTab === 'browse' && styles.activeTabText]}>
                             Browse ({approvedListings.length})
                         </Text>
+                        {activeTab === 'browse' && <View style={styles.activeIndicator} />}
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.tab, activeTab === 'my' && styles.activeTab]}
                         onPress={() => setActiveTab('my')}
+                        activeOpacity={0.7}
                     >
                         <Text style={[styles.tabText, activeTab === 'my' && styles.activeTabText]}>
                             My Listings ({myListings.length})
                         </Text>
+                        {activeTab === 'my' && <View style={styles.activeIndicator} />}
                     </TouchableOpacity>
                 </View>
 
@@ -98,11 +122,16 @@ export default function MarketplaceIndex() {
                     }
                     ListEmptyComponent={
                         <View style={styles.emptyState}>
-                            <Text style={styles.emptyIcon}>🏘️</Text>
+                            <Text style={styles.emptyIcon}>🏪</Text>
                             <Text style={styles.emptyText}>
                                 {activeTab === 'browse'
                                     ? 'No properties available'
                                     : 'No listings posted yet'}
+                            </Text>
+                            <Text style={styles.emptySubtext}>
+                                {activeTab === 'browse'
+                                    ? 'Check back later for new listings'
+                                    : 'Tap the button above to post a property'}
                             </Text>
                         </View>
                     }
@@ -117,52 +146,83 @@ export default function MarketplaceIndex() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F5F7FA'
+        backgroundColor: Colors.background.secondary,
     },
     header: {
-        padding: 16,
-        backgroundColor: '#fff',
+        padding: Spacing.lg,
+        backgroundColor: Colors.background.primary,
         borderBottomWidth: 1,
-        borderBottomColor: '#EEE'
+        borderBottomColor: Colors.border.light,
+    },
+    headerContent: {
+        marginBottom: Spacing.md,
+    },
+    headerTitle: {
+        fontSize: Typography.fontSize.xl,
+        fontWeight: Typography.fontWeight.bold,
+        color: Colors.text.primary,
+        marginBottom: Spacing.xs,
+    },
+    headerSubtitle: {
+        fontSize: Typography.fontSize.base,
+        color: Colors.text.secondary,
     },
     tabContainer: {
         flexDirection: 'row',
-        backgroundColor: '#fff',
+        backgroundColor: Colors.background.primary,
+        paddingHorizontal: Spacing.lg,
         borderBottomWidth: 1,
-        borderBottomColor: '#EEE'
+        borderBottomColor: Colors.border.light,
     },
     tab: {
         flex: 1,
-        paddingVertical: 12,
+        paddingVertical: Spacing.md,
         alignItems: 'center',
-        borderBottomWidth: 2,
-        borderBottomColor: 'transparent'
+        position: 'relative',
     },
     activeTab: {
-        borderBottomColor: '#007AFF'
+        // Active state handled by indicator
     },
     tabText: {
-        fontSize: 14,
-        color: '#666',
-        fontWeight: '500'
+        fontSize: Typography.fontSize.base,
+        color: Colors.text.secondary,
+        fontWeight: Typography.fontWeight.medium,
     },
     activeTabText: {
-        color: '#007AFF',
-        fontWeight: '600'
+        color: Colors.primary[600],
+        fontWeight: Typography.fontWeight.semibold,
+    },
+    activeIndicator: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 3,
+        backgroundColor: Colors.primary[600],
+        borderTopLeftRadius: BorderRadius.sm,
+        borderTopRightRadius: BorderRadius.sm,
     },
     list: {
-        padding: 16
+        padding: Spacing.lg,
     },
     emptyState: {
         alignItems: 'center',
-        paddingVertical: 60
+        paddingVertical: Spacing['5xl'],
     },
     emptyIcon: {
         fontSize: 64,
-        marginBottom: 16
+        marginBottom: Spacing.lg,
     },
     emptyText: {
-        fontSize: 16,
-        color: '#999'
-    }
+        fontSize: Typography.fontSize.xl,
+        fontWeight: Typography.fontWeight.semibold,
+        color: Colors.text.primary,
+        marginBottom: Spacing.xs,
+    },
+    emptySubtext: {
+        fontSize: Typography.fontSize.base,
+        color: Colors.text.tertiary,
+        textAlign: 'center',
+        paddingHorizontal: Spacing['2xl'],
+    },
 });

@@ -8,7 +8,7 @@ import { Card } from '../../../src/components/common/Card';
 import { LoadingSpinner } from '../../../src/components/common/LoadingSpinner';
 import { StatusBadge } from '../../../src/components/common/StatusBadge';
 import { useAuth } from '../../../src/contexts/AuthContext';
-import { getPendingBills, rejectPaymentProof, verifyPayment } from '../../../src/services/billService';
+import { getPendingBills, rejectPaymentProof, verifyPayment } from '../../../src/services/MonthlyBillingService';
 import { Bill } from '../../../src/types';
 
 export default function VerifyPaymentsScreen() {

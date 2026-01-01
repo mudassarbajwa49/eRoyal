@@ -10,7 +10,7 @@ import { Button } from '../../../src/components/common/Button';
 import { Card } from '../../../src/components/common/Card';
 import { Input } from '../../../src/components/common/Input';
 import { useAuth } from '../../../src/contexts/AuthContext';
-import { createComplaint } from '../../../src/services/complaintService';
+import { createComplaint } from '../../../src/services/ComplaintManagementService';
 import { ComplaintCategory } from '../../../src/types';
 
 const categories: ComplaintCategory[] = ['Water', 'Electricity', 'Maintenance', 'Security', 'Other'];
@@ -50,9 +50,10 @@ export default function CreateComplaintScreen() {
             return;
         }
 
-        const result = await ImagePicker.launchImagePickerAsync({
+        const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: true,
+            aspect: [4, 3],
             quality: 0.8
         });
 

@@ -3,6 +3,7 @@
 
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextStyle, TouchableOpacity, ViewStyle } from 'react-native';
+import { BorderRadius, Colors, Spacing, Typography } from '../../../constants/designSystem';
 
 interface ButtonProps {
     title: string;
@@ -64,7 +65,7 @@ export const Button: React.FC<ButtonProps> = ({
             activeOpacity={0.7}
         >
             {loading ? (
-                <ActivityIndicator color={variant === 'secondary' ? '#007AFF' : '#FFFFFF'} />
+                <ActivityIndicator color={variant === 'secondary' ? Colors.primary[600] : Colors.text.inverse} />
             ) : (
                 <Text style={getTextStyle()}>{title}</Text>
             )}
@@ -74,41 +75,41 @@ export const Button: React.FC<ButtonProps> = ({
 
 const styles = StyleSheet.create({
     button: {
-        paddingVertical: 14,
-        paddingHorizontal: 24,
-        borderRadius: 8,
+        paddingVertical: Spacing.md,
+        paddingHorizontal: Spacing.xl,
+        borderRadius: BorderRadius.md,
         alignItems: 'center',
         justifyContent: 'center',
-        minHeight: 48
+        minHeight: 48,
     },
     fullWidth: {
-        width: '100%'
+        width: '100%',
     },
     primaryButton: {
-        backgroundColor: '#007AFF'
+        backgroundColor: Colors.primary[600],
     },
     secondaryButton: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.background.primary,
         borderWidth: 1,
-        borderColor: '#007AFF'
+        borderColor: Colors.primary[600],
     },
     dangerButton: {
-        backgroundColor: '#FF3B30'
+        backgroundColor: Colors.error.main,
     },
     successButton: {
-        backgroundColor: '#34C759'
+        backgroundColor: Colors.success.main,
     },
     disabledButton: {
-        opacity: 0.5
+        opacity: 0.5,
     },
     buttonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '600'
+        color: Colors.text.inverse,
+        fontSize: Typography.fontSize.base,
+        fontWeight: Typography.fontWeight.semibold,
     },
     secondaryText: {
-        color: '#007AFF',
-        fontSize: 16,
-        fontWeight: '600'
-    }
+        color: Colors.primary[600],
+        fontSize: Typography.fontSize.base,
+        fontWeight: Typography.fontWeight.semibold,
+    },
 });

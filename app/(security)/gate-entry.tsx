@@ -7,7 +7,7 @@ import { Button } from '../../src/components/common/Button';
 import { Card } from '../../src/components/common/Card';
 import { Input } from '../../src/components/common/Input';
 import { useAuth } from '../../src/contexts/AuthContext';
-import { logVehicleEntry, searchResidentByHouse } from '../../src/services/vehicleService';
+import { logVehicleEntry, searchResidentByHouse } from '../../src/services/VehicleEntryLogService';
 import { VehicleType } from '../../src/types';
 
 export default function GateEntryScreen() {

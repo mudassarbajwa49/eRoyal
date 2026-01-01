@@ -1,27 +1,51 @@
-// Resident Home Screen
-// Dashboard with quick access to all features
+/**
+ * Resident Home Screen
+ * Modern dashboard with quick access to all resident features
+ * 
+ * This screen shows:
+ * - Greeting with resident name and house number
+ * - Quick status cards (bills, complaints, vehicles)
+ * - Service menu grid for navigation
+ */
 
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Avatar } from '../../src/components/common/Avatar';
 import { Card } from '../../src/components/common/Card';
 import { useAuth } from '../../src/contexts/AuthContext';
-import { getResidentBills } from '../../src/services/billService';
-import { getResidentComplaints } from '../../src/services/complaintService';
+import { useBreakpoint } from '../../src/hooks/useResponsive';
+import { getResidentComplaints } from '../../src/services/ComplaintManagementService';
+import { getResidentBills } from '../../src/services/MonthlyBillingService';
+import { borderRadius, fontSize, spacing } from '../../src/utils/responsive';
+
+/**
+ * Get appropriate greeting based on time of day
+ */
+function getGreeting(): string {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 18) return 'Good Afternoon';
+    return 'Good Evening';
+}
 
 export default function ResidentHome() {
     const { userProfile } = useAuth();
     const router = useRouter();
-    const [stats, setStats] = useState({
+    const breakpoint = useBreakpoint();
+
+    // State for quick stats
+    const [stats, setStats] = React.useState({
         unpaidBills: 0,
-        pendingComplaints: 0
+        pendingComplaints: 0,
+        vehiclesInside: 0
     });
-    const [refreshing, setRefreshing] = useState(false);
+    const [refreshing, setRefreshing] = React.useState(false);
 
-    useEffect(() => {
-        loadStats();
-    }, []);
-
+    /**
+     * Load dashboard statistics
+     * Fetches bills and complaints data in parallel
+     */
     const loadStats = async () => {
         if (!userProfile) return;
 
@@ -32,61 +56,89 @@ export default function ResidentHome() {
 
         setStats({
             unpaidBills: bills.filter(b => b.status === 'Unpaid').length,
-            pendingComplaints: complaints.filter(c => c.status === 'Pending').length
+            pendingComplaints: complaints.filter(c => c.status === 'Pending').length,
+            vehiclesInside: 0 // Can be implemented later
         });
     };
 
+    // Load stats on mount
+    React.useEffect(() => {
+        loadStats();
+    }, []);
+
+    /**
+     * Refresh data when user pulls down
+     */
     const onRefresh = async () => {
         setRefreshing(true);
         await loadStats();
         setRefreshing(false);
     };
 
+    // Quick status card configuration
+    const statusCards = [
+        {
+            title: 'Pending Bills',
+            value: stats.unpaidBills,
+            icon: '💳',
+            // Red if unpaid bills exist, green otherwise
+            color: stats.unpaidBills > 0 ? '#EF4444' : '#10B981',
+            bgColor: stats.unpaidBills > 0 ? '#FEE2E2' : '#D1FAE5',
+        },
+        {
+            title: 'Open Complaints',
+            value: stats.pendingComplaints,
+            icon: '🛠',
+            color: '#F59E0B',
+            bgColor: '#FEF3C7',
+        },
+        {
+            title: 'Vehicles Inside',
+            value: stats.vehiclesInside,
+            icon: '🚗',
+            color: '#3B82F6',
+            bgColor: '#DBEAFE',
+        },
+    ];
+
+    // Main service menu configuration
     const menuItems = [
         {
-            title: 'Bills',
-            icon: '💰',
-            description: 'View and pay bills',
+            title: 'Announcements',
+            icon: '📢',
+            route: '/(resident)/announcements',
+            color: '#3B82F6',
+        },
+        {
+            title: 'Bills & Payments',
+            icon: '💳',
             route: '/(resident)/bills',
-            badge: stats.unpaidBills,
-            color: '#34C759'
+            color: '#10B981',
         },
         {
             title: 'Complaints',
-            icon: '📋',
-            description: 'Submit and track complaints',
+            icon: '🛠',
             route: '/(resident)/complaints',
-            badge: stats.pendingComplaints,
-            color: '#FF9500'
+            color: '#F59E0B',
+        },
+        {
+            title: 'Vehicles',
+            icon: '🚗',
+            route: '/(resident)/vehicles',
+            color: '#8B5CF6',
         },
         {
             title: 'Marketplace',
-            icon: '🏘️',
-            description: 'Buy, sell, or rent properties',
+            icon: '🏪',
             route: '/(resident)/marketplace',
-            color: '#AF52DE'
-        },
-        {
-            title: 'My Vehicles',
-            icon: '🚗',
-            description: 'View vehicle entry logs',
-            route: '/(resident)/vehicles',
-            color: '#FF3B30'
+            color: '#6B7280',
         },
         {
             title: 'Change Password',
             icon: '🔑',
-            description: 'Update your password',
             route: '/(resident)/change-password',
-            color: '#5856D6'
+            color: '#1E40AF',
         },
-        {
-            title: 'Announcements',
-            icon: '📢',
-            description: 'View society notices',
-            route: '/(resident)/announcements',
-            color: '#007AFF'
-        }
     ];
 
     return (
@@ -94,28 +146,69 @@ export default function ResidentHome() {
             style={styles.container}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         >
-            <View style={styles.content}>
-                {/* Welcome Card */}
-                <Card style={styles.welcomeCard}>
-                    <Text style={styles.welcome}>Welcome back!</Text>
-                    <Text style={styles.name}>{userProfile?.name}</Text>
-                    <Text style={styles.houseNo}>House: {userProfile?.houseNo}</Text>
-                </Card>
+            <View style={[styles.content, { padding: spacing.lg }]}>
 
-                {/* Quick Stats */}
-                <View style={styles.statsContainer}>
-                    <View style={[styles.statBox, { backgroundColor: '#FFF3E0' }]}>
-                        <Text style={styles.statNumber}>{stats.unpaidBills}</Text>
-                        <Text style={styles.statLabel}>Unpaid Bills</Text>
-                    </View>
-                    <View style={[styles.statBox, { backgroundColor: '#FFE5E5' }]}>
-                        <Text style={styles.statNumber}>{stats.pendingComplaints}</Text>
-                        <Text style={styles.statLabel}>Pending Complaints</Text>
+                {/* Header Section - Avatar and Greeting */}
+                <View style={[styles.header, { marginBottom: spacing['2xl'] }]}>
+                    <View style={styles.headerLeft}>
+                        <Avatar
+                            name={userProfile?.name || 'User'}
+                            size="lg"
+                        />
+                        <View style={[styles.headerText, { marginLeft: spacing.md }]}>
+                            <Text style={[styles.greeting, { fontSize: fontSize.sm }]}>
+                                {getGreeting()} 👋
+                            </Text>
+                            <Text style={[styles.userName, { fontSize: breakpoint.mobile ? fontSize['2xl'] : fontSize['3xl'] }]}>
+                                {userProfile?.name}
+                            </Text>
+                            <Text style={[styles.houseNo, { fontSize: fontSize.base }]}>
+                                House: {userProfile?.houseNo}
+                            </Text>
+                        </View>
                     </View>
                 </View>
 
-                {/* Menu Grid */}
-                <View style={styles.menuGrid}>
+                {/* Quick Status Cards Section */}
+                <Text style={[styles.sectionTitle, { fontSize: fontSize.lg, marginBottom: spacing.md }]}>
+                    Quick Overview
+                </Text>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={[styles.statusCardsContainer, { gap: spacing.md, marginBottom: spacing.xl }]}
+                >
+                    {statusCards.map((card, index) => (
+                        <View
+                            key={index}
+                            style={[
+                                styles.statusCard,
+                                {
+                                    backgroundColor: card.bgColor,
+                                    borderColor: card.color,
+                                    borderRadius: borderRadius.xl,
+                                    padding: spacing.lg
+                                }
+                            ]}
+                        >
+                            <Text style={[styles.statusIcon, { marginBottom: spacing.sm }]}>
+                                {card.icon}
+                            </Text>
+                            <Text style={[styles.statusValue, { color: card.color, fontSize: fontSize['3xl'] }]}>
+                                {card.value}
+                            </Text>
+                            <Text style={[styles.statusTitle, { fontSize: fontSize.xs }]}>
+                                {card.title}
+                            </Text>
+                        </View>
+                    ))}
+                </ScrollView>
+
+                {/* Service Menu Grid */}
+                <Text style={[styles.sectionTitle, { fontSize: fontSize.lg, marginBottom: spacing.md }]}>
+                    Services
+                </Text>
+                <View style={[styles.menuGrid, { gap: spacing.md }]}>
                     {menuItems.map((item, index) => (
                         <TouchableOpacity
                             key={index}
@@ -123,15 +216,23 @@ export default function ResidentHome() {
                             onPress={() => router.push(item.route as any)}
                             activeOpacity={0.7}
                         >
-                            <Card style={styles.menuCard}>
-                                <Text style={styles.menuIcon}>{item.icon}</Text>
-                                <Text style={styles.menuTitle}>{item.title}</Text>
-                                <Text style={styles.menuDescription}>{item.description}</Text>
-                                {item.badge !== undefined && item.badge > 0 && (
-                                    <View style={[styles.badge, { backgroundColor: item.color }]}>
-                                        <Text style={styles.badgeText}>{item.badge}</Text>
-                                    </View>
-                                )}
+                            <Card style={[styles.menuCard, { padding: spacing.lg }]}>
+                                {/* Icon container with colored background */}
+                                <View
+                                    style={[
+                                        styles.iconContainer,
+                                        {
+                                            backgroundColor: `${item.color}15`, // 15 = 8% opacity
+                                            borderRadius: borderRadius.xl,
+                                            marginBottom: spacing.md
+                                        }
+                                    ]}
+                                >
+                                    <Text style={styles.menuIcon}>{item.icon}</Text>
+                                </View>
+                                <Text style={[styles.menuTitle, { fontSize: fontSize.base }]}>
+                                    {item.title}
+                                </Text>
                             </Card>
                         </TouchableOpacity>
                     ))}
@@ -144,89 +245,94 @@ export default function ResidentHome() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F5F7FA'
+        backgroundColor: '#F5F7FA',
     },
     content: {
-        padding: 16
+        // Padding handled inline
     },
-    welcomeCard: {
-        marginBottom: 20,
-        backgroundColor: '#007AFF'
+    header: {
+        // Margin handled inline
     },
-    welcome: {
-        fontSize: 16,
-        color: '#fff',
-        marginBottom: 4
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
-    name: {
-        fontSize: 24,
+    headerText: {
+        flex: 1,
+        // Margin handled inline
+    },
+    greeting: {
+        color: '#6B7280',
+        marginBottom: 2,
+    },
+    userName: {
         fontWeight: '700',
-        color: '#fff',
-        marginBottom: 4
+        color: '#111827',
+        marginBottom: 2,
     },
     houseNo: {
-        fontSize: 16,
-        color: '#fff',
-        opacity: 0.9
+        color: '#6B7280',
     },
-    statsContainer: {
-        flexDirection: 'row',
-        gap: 12,
-        marginBottom: 20
+    sectionTitle: {
+        fontWeight: '600',
+        color: '#111827',
+        // Font size and margin handled inline
     },
-    statBox: {
-        flex: 1,
-        padding: 16,
-        borderRadius: 12,
-        alignItems: 'center'
+    statusCardsContainer: {
+        paddingBottom: 4,
+        // Gap and margin handled inline
     },
-    statNumber: {
+    statusCard: {
+        width: 140,
+        borderWidth: 2,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+        // Colors, padding, and border radius handled inline
+    },
+    statusIcon: {
         fontSize: 32,
-        fontWeight: '700',
-        color: '#333',
-        marginBottom: 4
+        // Margin handled inline
     },
-    statLabel: {
-        fontSize: 13,
-        color: '#666',
-        textAlign: 'center'
+    statusValue: {
+        fontWeight: '700',
+        marginBottom: 4,
+        // Color and font size handled inline
+    },
+    statusTitle: {
+        color: '#6B7280',
+        textAlign: 'center',
+        // Font size handled inline
     },
     menuGrid: {
-        gap: 12
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        // Gap handled inline
     },
     menuItem: {
-        marginBottom: 4
+        width: '48%',
     },
     menuCard: {
-        position: 'relative'
+        alignItems: 'center',
+        // Padding handled inline
+    },
+    iconContainer: {
+        width: 64,
+        height: 64,
+        justifyContent: 'center',
+        alignItems: 'center',
+        // Background, border radius, and margin handled inline
     },
     menuIcon: {
-        fontSize: 36,
-        marginBottom: 12
+        fontSize: 32,
     },
     menuTitle: {
-        fontSize: 18,
         fontWeight: '600',
-        color: '#333',
-        marginBottom: 4
+        color: '#111827',
+        textAlign: 'center',
+        // Font size handled inline
     },
-    menuDescription: {
-        fontSize: 14,
-        color: '#666'
-    },
-    badge: {
-        position: 'absolute',
-        top: 12,
-        right: 12,
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        justifyContent: 'center',
-        alignItems: 'center'
-    },
-    badgeText: {
-        color: '#fff',
-        fontSize: 12,
-        fontWeight: '700'
-    }
 });

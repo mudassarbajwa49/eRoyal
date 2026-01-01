@@ -3,7 +3,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { getUsersByRole } from '../../services/userService';
 import { UserProfile, UserRole } from '../../types';
 
 interface UserSelectorProps {

@@ -5,7 +5,7 @@
 import { addDoc, collection, getDocs, orderBy, query, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebaseConfig';
 import { ApiResponse } from '../types';
-import { uploadMultipleImages, uriToBlob } from './storageService';
+import { uploadMultipleImages, uriToBlob } from './FirebaseStorageService';
 
 export interface Announcement {
     id: string;

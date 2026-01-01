@@ -25,17 +25,35 @@ export interface UserProfile extends User {
 // BILL TYPES
 // ==========================================
 
-export type BillStatus = 'Unpaid' | 'Pending' | 'Paid';
+export type BillStatus = 'Draft' | 'Unpaid' | 'Pending' | 'Paid';
+
+export interface BillComplaintCharge {
+    complaintId: string;
+    complaintNumber: string;
+    description: string;
+    amount: number;
+}
+
+export interface BillBreakdown {
+    baseCharges: number;
+    complaintCharges: BillComplaintCharge[];
+    previousDues: number;
+    total: number;
+}
 
 export interface Bill {
     id?: string;
     residentId: string;
     residentName: string;
     houseNo: string;
-    month: string;
-    amount: number;
+    month: string; // Format: YYYY-MM
+    breakdown: BillBreakdown;
+    amount: number; // Total amount (calculated from breakdown)
     dueDate: any; // Firestore Timestamp
     status: BillStatus;
+    sentBy: string | null; // Admin who sent the bill
+    sentAt: any | null; // When bill was sent to user
+    isArchived: boolean; // For paid bills
     proofUrl: string | null;
     proofUploadedAt: any | null;
     verifiedBy: string | null;
@@ -68,6 +86,9 @@ export interface Complaint {
     resolvedBy?: string | null;
     resolutionNotes?: string | null;
     adminNotes?: string | null;
+    chargeAmount?: number | null; // Amount to add to bill
+    addedToBill?: boolean; // Whether already added to bill
+    billId?: string | null; // Which bill it was added to
 }
 
 // ==========================================
@@ -97,10 +118,11 @@ export interface Listing {
 }
 
 // ==========================================
-// VEHICLE LOG TYPES
+// VEHICLE TYPES
 // ==========================================
 
 export type VehicleType = 'Resident' | 'Visitor' | 'Service';
+export type RegisteredVehicleType = 'Car' | 'Bike' | 'Other';
 
 export interface VehicleLog {
     id?: string;
@@ -115,6 +137,19 @@ export interface VehicleLog {
     purpose: string | null;
     loggedBy: string;
     loggedByName: string;
+}
+
+export interface RegisteredVehicle {
+    id?: string;
+    vehicleNo: string; // Normalized (uppercase, trimmed)
+    type: RegisteredVehicleType;
+    color?: string;
+    imageUrl?: string;
+    residentId: string;
+    residentName: string;
+    houseNo: string;
+    createdAt: any;
+    updatedAt: any;
 }
 
 // ==========================================
