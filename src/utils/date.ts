@@ -2,6 +2,7 @@
 // Centralized date handling to avoid duplication
 
 import { Timestamp } from 'firebase/firestore';
+import { logger } from './logger';
 
 /**
  * Format a Firestore Timestamp or Date object to localized date string
@@ -18,8 +19,8 @@ export const formatTimestamp = (
     try {
         const date = timestamp instanceof Timestamp ? timestamp.toDate() : timestamp;
         return date.toLocaleDateString();
-    } catch (error) {
-        console.error('Error formatting timestamp:', error);
+    } catch {
+        logger.error('Error formatting timestamp');
         return fallback;
     }
 };
@@ -36,8 +37,8 @@ export const formatTimestampWithTime = (
     try {
         const date = timestamp instanceof Timestamp ? timestamp.toDate() : timestamp;
         return date.toLocaleString();
-    } catch (error) {
-        console.error('Error formatting timestamp with time:', error);
+    } catch {
+        logger.error('Error formatting timestamp with time');
         return fallback;
     }
 };
@@ -64,8 +65,8 @@ export const formatRelativeTime = (
         if (diffDays < 30) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
 
         return date.toLocaleDateString();
-    } catch (error) {
-        console.error('Error formatting relative time:', error);
+    } catch {
+        logger.error('Error formatting relative time');
         return 'Unknown';
     }
 };
@@ -88,7 +89,7 @@ export const formatMonthString = (monthString: string): string => {
         const [year, month] = monthString.split('-');
         const date = new Date(parseInt(year), parseInt(month) - 1, 1);
         return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-    } catch (error) {
+    } catch {
         return monthString;
     }
 };

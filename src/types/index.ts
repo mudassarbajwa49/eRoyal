@@ -20,9 +20,8 @@ export interface User {
     createdBy: string;
 }
 
-export interface UserProfile extends User {
-    // Extended profile if needed
-}
+// Type alias for extended profile (can add fields later)
+export type UserProfile = User;
 
 // ==========================================
 // BILL TYPES

@@ -6,6 +6,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '../../firebaseConfig';
 import { ApiResponse, AuthContextType, User, UserRole } from '../types';
+import { logger } from '../utils/logger';
 
 // Create Context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,13 +27,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             if (userDoc.exists()) {
                 const userData = userDoc.data() as User;
-                console.log('✅ User profile found in users collection (fast path)');
+                logger.success('User profile found in users collection (fast path)');
                 return userData;
             }
 
             // Fallback: If not in 'users', check role-specific collections
             // This handles legacy users created before 'users' collection was added
-            console.log('⚠️ User not in users collection, checking role-specific collections...');
+            logger.warn('User not in users collection, checking role-specific collections...');
             const roleCollections = ['residents', 'admins', 'security_staff'];
 
             for (const collectionName of roleCollections) {
@@ -40,15 +41,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
                 if (roleDoc.exists()) {
                     const userData = roleDoc.data() as User;
-                    console.log(`✅ User profile found in ${collectionName} collection (fallback)`);
+                    logger.success(`User profile found in ${collectionName} collection (fallback)`);
                     return userData;
                 }
             }
 
-            console.error('❌ User profile not found in any collection');
+            logger.error('User profile not found in any collection');
             return null;
         } catch (error) {
-            console.error('Error fetching user profile:', error);
+            logger.error('Error fetching user profile:', error);
             return null;
         }
     };
@@ -56,19 +57,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Login Function
     const login = async (email: string, password: string): Promise<ApiResponse> => {
         try {
-            console.log('🔐 AuthContext: Starting login for:', email);
+            logger.log('AuthContext: Starting login for:', email);
 
             // Sign in with Firebase Auth
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
-            console.log('✅ Firebase Auth successful, UID:', user.uid);
+            logger.success('Firebase Auth successful, UID:', user.uid);
 
             // Fetch user profile from Firestore
-            console.log('📄 Fetching user profile from Firestore...');
+            logger.log('Fetching user profile from Firestore...');
             const profile = await fetchUserProfile(user.uid);
 
             if (!profile) {
-                console.error('❌ User profile not found in Firestore for UID:', user.uid);
+                logger.error('User profile not found in Firestore for UID:', user.uid);
                 await signOut(auth);
                 return {
                     success: false,
@@ -76,10 +77,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 };
             }
 
-            console.log('✅ User profile found:', profile);
+            logger.success('User profile found:', profile);
             setUserProfile(profile);
             setUserRole(profile.role);
-            console.log('✅ Login successful! Role:', profile.role);
+            logger.success('Login successful! Role:', profile.role);
 
             return {
                 success: true,
@@ -87,9 +88,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 message: 'Login successful'
             };
         } catch (error: any) {
-            console.error('❌ Login error:', error);
-            console.error('Error code:', error.code);
-            console.error('Error message:', error.message);
+            logger.error('Login error:', error);
+            logger.debug('Error code:', error.code);
 
             let errorMessage = 'Login failed';
 
@@ -124,7 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUserRole(null);
             setCurrentUser(null);
         } catch (error) {
-            console.error('Logout error:', error);
+            logger.error('Logout error:', error);
         }
     };
 
