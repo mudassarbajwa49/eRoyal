@@ -1,5 +1,8 @@
 // TypeScript Types for eRoyal System
 
+import { User as FirebaseUser } from 'firebase/auth';
+import { FieldValue, Timestamp } from 'firebase/firestore';
+
 // ==========================================
 // USER TYPES
 // ==========================================
@@ -13,7 +16,7 @@ export interface User {
     houseNo: string | null;
     cnic?: string;
     role: UserRole;
-    createdAt: any; // Firestore Timestamp
+    createdAt: Timestamp | FieldValue;
     createdBy: string;
 }
 
@@ -49,16 +52,16 @@ export interface Bill {
     month: string; // Format: YYYY-MM
     breakdown: BillBreakdown;
     amount: number; // Total amount (calculated from breakdown)
-    dueDate: any; // Firestore Timestamp
+    dueDate: Timestamp;
     status: BillStatus;
     sentBy: string | null; // Admin who sent the bill
-    sentAt: any | null; // When bill was sent to user
+    sentAt: Timestamp | FieldValue | null; // When bill was sent to user
     isArchived: boolean; // For paid bills
     proofUrl: string | null;
-    proofUploadedAt: any | null;
+    proofUploadedAt: Timestamp | FieldValue | null;
     verifiedBy: string | null;
-    verifiedAt: any | null;
-    createdAt: any;
+    verifiedAt: Timestamp | FieldValue | null;
+    createdAt: Timestamp | FieldValue;
 }
 
 // ==========================================
@@ -80,9 +83,9 @@ export interface Complaint {
     residentId: string;
     residentName: string;
     houseNo: string;
-    createdAt: any;
-    updatedAt: any;
-    resolvedAt?: any | null;
+    createdAt: Timestamp | FieldValue;
+    updatedAt: Timestamp | FieldValue;
+    resolvedAt?: Timestamp | FieldValue | null;
     resolvedBy?: string | null;
     resolutionNotes?: string | null;
     adminNotes?: string | null;
@@ -111,9 +114,9 @@ export interface Listing {
     postedBy: string;
     postedByName: string;
     postedByHouse: string;
-    createdAt: any;
+    createdAt: Timestamp | FieldValue;
     reviewedBy: string | null;
-    reviewedAt: any | null;
+    reviewedAt: Timestamp | FieldValue | null;
     rejectionReason: string | null;
 }
 
@@ -128,8 +131,8 @@ export interface VehicleLog {
     id?: string;
     vehicleNo: string;
     type: VehicleType;
-    entryTime: any;
-    exitTime: any | null;
+    entryTime: Timestamp | FieldValue;
+    exitTime: Timestamp | FieldValue | null;
     residentId: string | null;
     residentName: string | null;
     houseNo: string | null;
@@ -148,8 +151,8 @@ export interface RegisteredVehicle {
     residentId: string;
     residentName: string;
     houseNo: string;
-    createdAt: any;
-    updatedAt: any;
+    createdAt: Timestamp | FieldValue;
+    updatedAt: Timestamp | FieldValue;
 }
 
 // ==========================================
@@ -166,7 +169,7 @@ export interface Notification {
     type: NotificationType;
     isRead: boolean;
     relatedId: string | null;
-    createdAt: any;
+    createdAt: Timestamp | FieldValue;
 }
 
 // ==========================================
@@ -246,7 +249,7 @@ export interface ImageUploadResponse {
 // ==========================================
 
 export interface AuthContextType {
-    currentUser: any | null; // Firebase User
+    currentUser: FirebaseUser | null;
     userProfile: User | null;
     userRole: UserRole | null;
     loading: boolean;

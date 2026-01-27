@@ -1,0 +1,211 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===========================
+    // HELPER FUNCTIONS
+    // ===========================
+    
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Get user's role from users collection
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
+    // Check if user is admin
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() == 'admin';
+    }
+    
+    // Check if user is resident
+    function isResident() {
+      return isAuthenticated() && getUserRole() == 'resident';
+    }
+    
+    // Check if user is security staff
+    function isSecurity() {
+      return isAuthenticated() && getUserRole() == 'security';
+    }
+    
+    // Check if user owns this resource
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // ===========================
+    // USERS COLLECTION
+    // ===========================
+    match /users/{userId} {
+      // Anyone authenticated can read user profiles
+      allow read: if isAuthenticated();
+      
+      // Only admins can create/update users
+      allow create, update: if isAdmin();
+      
+      // Never allow delete
+      allow delete: if false;
+    }
+    
+    // ===========================
+    // ROLE-SPECIFIC COLLECTIONS
+    // ===========================
+    match /residents/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin();
+      allow delete: if false;
+    }
+    
+    match /admins/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin();
+      allow delete: if false;
+    }
+    
+    match /security_staff/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin();
+      allow delete: if false;
+    }
+    
+    // ===========================
+    // BILLS COLLECTION
+    // ===========================
+    match /bills/{billId} {
+      // Admins can read all bills
+      // Residents can read only their own bills
+      allow read: if isAdmin() || 
+                     (isResident() && resource.data.residentId == request.auth.uid);
+      
+      // Only admins can create/update bills
+      allow create, update: if isAdmin();
+      
+      // Never allow delete (keep for audit trail)
+      allow delete: if false;
+    }
+    
+    // ===========================
+    // COMPLAINTS COLLECTION
+    // ===========================
+    match /complaints/{complaintId} {
+      // Admins can read all complaints
+      // Residents can read only their own complaints
+      allow read: if isAdmin() || 
+                     (isResident() && resource.data.residentId == request.auth.uid);
+      
+      // Residents can create complaints
+      // Make sure they can only set their own residentId
+      allow create: if isResident() && 
+                       request.resource.data.residentId == request.auth.uid;
+      
+      // Only admins can update (for status changes, resolution)
+      allow update: if isAdmin();
+      
+      // Never allow delete
+      allow delete: if false;
+    }
+    
+    // ===========================
+    // ANNOUNCEMENTS COLLECTION
+    // ===========================
+    match /announcements/{announcementId} {
+      // Everyone authenticated can read announcements
+      allow read: if isAuthenticated();
+      
+      // Only admins can create/update/delete announcements
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // ===========================
+    // VEHICLES COLLECTION
+    // ===========================
+    match /vehicles/{vehicleId} {
+      // Everyone authenticated can read
+      allow read: if isAuthenticated();
+      
+      // Residents can register their own vehicles
+      allow create: if isResident() && 
+                       request.resource.data.residentId == request.auth.uid;
+      
+      // Residents can update their own vehicles
+      // Admins can update any vehicle
+      allow update: if isAdmin() || 
+                       (isResident() && resource.data.residentId == request.auth.uid);
+      
+      // Only residents can delete their own vehicles
+      allow delete: if isResident() && resource.data.residentId == request.auth.uid;
+    }
+    
+    // ===========================
+    // VEHICLE LOGS COLLECTION
+    // ===========================
+    match /vehicle_logs/{logId} {
+      // Everyone authenticated can read
+      allow read: if isAuthenticated();
+      
+      // Security staff can create vehicle logs
+      allow create: if isSecurity();
+      
+      // Security staff can update logs (for exit time)
+      allow update: if isSecurity();
+      
+      // Never allow delete (audit trail)
+      allow delete: if false;
+    }
+    
+    // ===========================
+    // MARKETPLACE LISTINGS
+    // ===========================
+    match /marketplace/{listingId} {
+      // Everyone authenticated can read approved listings
+      allow read: if isAuthenticated();
+      
+      // Residents can create listings
+      allow create: if isResident() && 
+                       request.resource.data.postedBy == request.auth.uid;
+      
+      // Residents can update their own listings
+      // Admins can update any listing (for approval/rejection)
+      allow update: if isAdmin() || 
+                       (isResident() && resource.data.postedBy == request.auth.uid);
+      
+      // Residents can delete their own listings
+      // Admins can delete any listing
+      allow delete: if isAdmin() || 
+                       (isResident() && resource.data.postedBy == request.auth.uid);
+    }
+    
+    // ===========================
+    // COUNTERS COLLECTION (for auto-increment)
+    // ===========================
+    match /counters/{counterId} {
+      // Only read during transactions
+      allow read: if isAuthenticated();
+      
+      // Only allow updates through transactions (from backend logic)
+      allow write: if isAuthenticated();
+    }
+    
+    // ===========================
+    // NOTIFICATIONS COLLECTION
+    // ===========================
+    match /notifications/{notificationId} {
+      // Users can only read their own notifications
+      allow read: if isAuthenticated() && 
+                     resource.data.userId == request.auth.uid;
+      
+      // Admins can create notifications
+      allow create: if isAdmin();
+      
+      // Users can update their own notifications (mark as read)
+      allow update: if isAuthenticated() && 
+                       resource.data.userId == request.auth.uid;
+      
+      // Never allow delete
+      allow delete: if false;
+    }
+  }
+}

@@ -1,5 +1,5 @@
-// Create Listing Screen (Resident)
-// Post property for sale or rent
+// Create Listing Screen (Admin)
+// Admin can post property for sale or rent (auto-approved, no admin review needed)
 
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useRouter } from 'expo-router';
@@ -12,7 +12,7 @@ import { useAuth } from '../../../src/contexts/AuthContext';
 import { createListing } from '../../../src/services/MarketplaceListingService';
 import { ListingType } from '../../../src/types';
 
-export default function CreateListingScreen() {
+export default function AdminCreateListingScreen() {
     const { userProfile } = useAuth();
     const router = useRouter();
     const [loading, setLoading] = useState(false);
@@ -20,7 +20,7 @@ export default function CreateListingScreen() {
         type: 'Rent' as ListingType,
         price: '',
         size: '',
-        location: userProfile?.houseNo || '',
+        location: '',
         contact: '',
         description: ''
     });
@@ -93,15 +93,26 @@ export default function CreateListingScreen() {
             },
             userProfile.uid,
             userProfile.name,
-            userProfile.houseNo!
+            'Admin' // Admin doesn't have house number
         );
 
         setLoading(false);
 
         if (result.success) {
+            // Clear form
+            setFormData({
+                type: 'Rent',
+                price: '',
+                size: '',
+                location: '',
+                contact: '',
+                description: ''
+            });
+            setSelectedImages([]);
+
             Alert.alert(
                 'Success',
-                'Listing submitted for admin approval. You will be notified once approved.',
+                'Listing posted successfully!',
                 [{ text: 'OK', onPress: () => router.back() }]
             );
         } else {
@@ -111,11 +122,17 @@ export default function CreateListingScreen() {
 
     return (
         <>
-            <Stack.Screen options={{ title: 'Post Property' }} />
+            <Stack.Screen options={{ title: 'Post Property (Admin)' }} />
             <ScrollView style={styles.container}>
                 <View style={styles.content}>
                     <Card>
                         <Text style={styles.sectionTitle}>Property Details</Text>
+
+                        <View style={styles.adminNote}>
+                            <Text style={styles.noteText}>
+                                ℹ️ Admin listings are auto-approved and visible immediately
+                            </Text>
+                        </View>
 
                         {/* Type Selector */}
                         <View style={styles.typeSelector}>
@@ -157,7 +174,7 @@ export default function CreateListingScreen() {
 
                         <Input
                             label="Location"
-                            placeholder="House/Plot number"
+                            placeholder="House/Plot number or area"
                             value={formData.location}
                             onChangeText={(value) => setFormData({ ...formData, location: value })}
                             required
@@ -222,16 +239,12 @@ export default function CreateListingScreen() {
                         </View>
 
                         <Button
-                            title="Submit for Approval"
+                            title="Publish Listing"
                             onPress={handleSubmit}
                             loading={loading}
                             fullWidth
                             style={styles.submitButton}
                         />
-
-                        <Text style={styles.note}>
-                            Note: Your listing will be reviewed by admin before being published
-                        </Text>
                     </Card>
                 </View>
             </ScrollView>
@@ -252,6 +265,16 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#333',
         marginBottom: 16
+    },
+    adminNote: {
+        backgroundColor: '#E3F2FD',
+        padding: 12,
+        borderRadius: 8,
+        marginBottom: 16
+    },
+    noteText: {
+        color: '#1976D2',
+        fontSize: 13
     },
     typeSelector: {
         marginBottom: 16
@@ -310,12 +333,5 @@ const styles = StyleSheet.create({
     },
     submitButton: {
         marginTop: 8
-    },
-    note: {
-        fontSize: 12,
-        color: '#999',
-        marginTop: 12,
-        textAlign: 'center',
-        fontStyle: 'italic'
     }
 });

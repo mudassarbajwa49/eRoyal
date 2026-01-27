@@ -3,7 +3,7 @@
 
 import { deleteApp, initializeApp } from 'firebase/app';
 import { createUserWithEmailAndPassword, initializeAuth, inMemoryPersistence } from 'firebase/auth';
-import { doc, serverTimestamp } from 'firebase/firestore';
+import { doc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db, firebaseConfig } from '../../firebaseConfig';
 import { ApiResponse, CreateUserFormData } from '../types';
 

@@ -1,0 +1,110 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper to validate file size (max 5MB)
+    function isValidSize() {
+      return request.resource.size < 5 * 1024 * 1024;
+    }
+    
+    // Helper to validate image type
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    // ===========================
+    // COMPLAINT IMAGES
+    // ===========================
+    match /complaints/{fileName} {
+      // Anyone authenticated can read complaint images
+      allow read: if isAuthenticated();
+      
+      // Authenticated users can upload images
+      // Must be image type and under 5MB
+      allow write: if isAuthenticated() && isImage() && isValidSize();
+      
+      // Only allow delete by admins (would need custom token or check in app)
+      allow delete: if isAuthenticated();
+    }
+    
+    // ===========================
+    // BILL PAYMENT PROOFS
+    // ===========================
+    match /bills/{fileName} {
+      // Anyone authenticated can read bill images
+      allow read: if isAuthenticated();
+      
+      // Authenticated users can upload payment proofs
+      // Must be image type and under 5MB
+      allow write: if isAuthenticated() && isImage() && isValidSize();
+      
+      // Don't allow delete (keep for audit trail)
+      allow delete: if false;
+    }
+    
+    // ===========================
+    // ANNOUNCEMENT IMAGES
+    // ===========================
+    match /announcements/{fileName} {
+      // Anyone authenticated can read announcements
+      allow read: if isAuthenticated();
+      
+      // Only authenticated users can upload
+      // (Frontend should restrict to admins)
+      allow write: if isAuthenticated() && isImage() && isValidSize();
+      
+      // Allow delete for cleanup
+      allow delete: if isAuthenticated();
+    }
+    
+    // ===========================
+    // VEHICLE IMAGES
+    // ===========================
+    match /vehicles/{fileName} {
+      // Anyone authenticated can read
+      allow read: if isAuthenticated();
+      
+      // Authenticated users can upload vehicle images
+      allow write: if isAuthenticated() && isImage() && isValidSize();
+      
+      // Allow delete
+      allow delete: if isAuthenticated();
+    }
+    
+    // ===========================
+    // PROFILE PICTURES
+    // ===========================
+    match /profiles/{userId}/{fileName} {
+      // Anyone authenticated can read profiles
+      allow read: if isAuthenticated();
+      
+      // Users can only upload to their own profile folder
+      allow write: if isAuthenticated() && 
+                      request.auth.uid == userId && 
+                      isImage() && 
+                      isValidSize();
+      
+      // Users can delete their own profile pictures
+      allow delete: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // ===========================
+    // MARKETPLACE LISTING IMAGES
+    // ===========================
+    match /marketplace/{fileName} {
+      // Anyone authenticated can read
+      allow read: if isAuthenticated();
+      
+      // Authenticated users can upload
+      allow write: if isAuthenticated() && isImage() && isValidSize();
+      
+      // Allow delete
+      allow delete: if isAuthenticated();
+    }
+  }
+}
