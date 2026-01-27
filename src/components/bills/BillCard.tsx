@@ -13,6 +13,7 @@ interface BillCardProps {
     onPress?: (bill: Bill) => void;
     onPayPress?: (billId: string) => void;
     onViewProofPress?: (proofUrl: string) => void;
+    onSendPress?: (bill: Bill) => void; // Admin can send bill notification
     isAdmin?: boolean;
 }
 
@@ -21,6 +22,7 @@ const BillCard: React.FC<BillCardProps> = ({
     onPress,
     onPayPress,
     onViewProofPress,
+    onSendPress,
     isAdmin = false
 }) => {
     const formatDate = (timestamp: any): string => {
@@ -75,6 +77,17 @@ const BillCard: React.FC<BillCardProps> = ({
                     title="View Payment Proof"
                     onPress={() => onViewProofPress(bill.proofUrl!)}
                     variant="secondary"
+                    fullWidth
+                    style={styles.actionButton}
+                />
+            )}
+
+            {/* Admin Send Bill Button */}
+            {isAdmin && onSendPress && (
+                <Button
+                    title="📧 Send Bill Notification"
+                    onPress={() => onSendPress(bill)}
+                    variant="primary"
                     fullWidth
                     style={styles.actionButton}
                 />

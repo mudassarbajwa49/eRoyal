@@ -40,6 +40,12 @@ export default function CreateAnnouncementScreen() {
         setLoading(false);
 
         if (result.success) {
+            // Clear the form
+            setTitle('');
+            setMessage('');
+            setPriority('medium');
+            setImages([]);
+
             Alert.alert(
                 'Success',
                 'Announcement sent to all residents!',

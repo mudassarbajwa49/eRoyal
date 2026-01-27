@@ -393,6 +393,28 @@ export const getResidentCurrentBill = async (
 };
 
 /**
+ * Get a single bill by ID
+ */
+export const getBillById = async (billId: string): Promise<Bill | null> => {
+    try {
+        const { getDoc } = await import('firebase/firestore');
+        const billDoc = await getDoc(doc(db, 'bills', billId));
+
+        if (!billDoc.exists()) {
+            return null;
+        }
+
+        return {
+            id: billDoc.id,
+            ...billDoc.data(),
+        } as Bill;
+    } catch (error) {
+        console.error('Error fetching bill by ID:', error);
+        return null;
+    }
+};
+
+/**
  * Get all bills for a resident (excluding drafts)
  */
 export const getResidentBills = async (
