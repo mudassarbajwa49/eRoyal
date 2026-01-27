@@ -22,15 +22,7 @@ export const createUserSchema = z.object({
     role: z.enum(['admin', 'resident', 'security']),
     houseNo: z.string()
         .trim()
-        .optional()
-        .refine((val, ctx) => {
-            // If role is resident, houseNo is required
-            const role = ctx?.parent?.role;
-            if (role === 'resident' && (!val || val.trim() === '')) {
-                return false;
-            }
-            return true;
-        }, 'House number is required for residents'),
+        .optional(),
     cnic: z.string()
         .trim()
         .optional(),

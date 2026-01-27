@@ -58,7 +58,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
                     <Text style={styles.emoji}>😕</Text>
                     <Text style={styles.title}>Oops! Something went wrong</Text>
                     <Text style={styles.message}>
-                        We're sorry for the inconvenience. Please try reloading.
+                        Sorry for the inconvenience. Please try reloading.
                     </Text>
                     {__DEV__ && this.state.error && (
                         <View style={styles.errorDetails}>

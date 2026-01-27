@@ -219,7 +219,7 @@ export default function ComplaintDetailScreen() {
                                 keyboardType="numeric"
                             />
                             <Text style={styles.helperText}>
-                                💡 This will be added to the resident's monthly bill
+                                This amount will be added to the resident monthly bill
                             </Text>
                         </View>
 

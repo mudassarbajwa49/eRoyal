@@ -3,6 +3,7 @@
 
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { storage } from '../../firebaseConfig';
+import { logger } from '../utils/logger';
 
 /**
  * Convert URI to Blob for upload
@@ -35,7 +36,7 @@ export const uploadImage = async (
             fileName,
         };
     } catch (error) {
-        console.error('Error uploading image:', error);
+        logger.error('Error uploading image:', error);
         throw error;
     }
 };
@@ -46,13 +47,13 @@ export const uploadImage = async (
 export const uploadMultipleImages = async (
     blobs: Blob[],
     folder: string = 'images'
-): Promise<Array<{ url: string; fileName: string }>> => {
+): Promise<{ url: string; fileName: string }[]> => {
     try {
         const uploadPromises = blobs.map((blob) => uploadImage(blob, folder));
         const results = await Promise.all(uploadPromises);
         return results;
     } catch (error) {
-        console.error('Error uploading multiple images:', error);
+        logger.error('Error uploading multiple images:', error);
         throw error;
     }
 };

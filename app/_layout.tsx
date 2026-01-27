@@ -7,6 +7,7 @@ import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { LoadingSpinner } from '../src/components/common/LoadingSpinner';
 import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
+import { logger } from '../src/utils/logger';
 
 // Protected Route Handler
 function RootLayoutNav() {
@@ -15,7 +16,7 @@ function RootLayoutNav() {
   const router = useRouter();
 
   useEffect(() => {
-    console.log('🔄 RootLayout: Auth state changed', {
+    logger.log('RootLayout: Auth state changed', {
       loading,
       currentUser: currentUser?.email,
       userRole,
@@ -31,46 +32,46 @@ function RootLayoutNav() {
 
     if (!currentUser && !inAuthGroup) {
       // User not logged in, redirect to login
-      console.log('🔒 Not logged in, redirecting to login');
+      logger.log('Not logged in, redirecting to login');
       router.replace('/(auth)/login');
     } else if (currentUser && userRole) {
       // User logged in, redirect based on role
-      console.log('✅ User logged in with role:', userRole);
+      logger.log('User logged in with role:', userRole);
 
       if (inAuthGroup) {
         // Logged in but on auth screen, redirect to appropriate dashboard
-        console.log('📍 On auth screen, redirecting to dashboard...');
+        logger.log('On auth screen, redirecting to dashboard...');
         switch (userRole) {
           case 'admin':
-            console.log('➡️ Redirecting to admin dashboard');
+            logger.log('Redirecting to admin dashboard');
             router.replace('/(admin)/dashboard');
             break;
           case 'resident':
-            console.log('➡️ Redirecting to resident home');
+            logger.log('Redirecting to resident home');
             router.replace('/(resident)/home');
             break;
           case 'security':
-            console.log('➡️ Redirecting to security gate');
+            logger.log('Redirecting to security gate');
             router.replace('/(security)/gate-entry');
             break;
         }
       } else {
         // Check if user is in the correct group for their role
         if (userRole === 'admin' && !inAdminGroup) {
-          console.log('⚠️ Admin not in admin group, redirecting');
+          logger.warn('Admin not in admin group, redirecting');
           router.replace('/(admin)/dashboard');
         } else if (userRole === 'resident' && !inResidentGroup) {
-          console.log('⚠️ Resident not in resident group, redirecting');
+          logger.warn('Resident not in resident group, redirecting');
           router.replace('/(resident)/home');
         } else if (userRole === 'security' && !inSecurityGroup) {
-          console.log('⚠️ Security not in security group, redirecting');
+          logger.warn('Security not in security group, redirecting');
           router.replace('/(security)/gate-entry');
         }
       }
     } else if (currentUser && !userRole) {
-      console.log('⚠️ User logged in but role not loaded yet');
+      logger.warn('User logged in but role not loaded yet');
     }
-  }, [currentUser, userRole, loading, segments]);
+  }, [currentUser, userRole, loading, segments, router]);
 
   if (loading) {
     return <LoadingSpinner message="Loading eRoyal..." />;

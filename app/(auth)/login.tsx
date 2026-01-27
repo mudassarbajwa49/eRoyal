@@ -142,7 +142,7 @@ export default function LoginScreen() {
                     {/* Footer */}
                     <View style={styles.footer}>
                         <Text style={styles.footerText}>
-                            Don't have an account? Contact your administrator.
+                            No account? Contact your administrator.
                         </Text>
                         <Text style={styles.versionText}>Version 1.0.0</Text>
                     </View>
