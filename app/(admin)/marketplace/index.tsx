@@ -15,6 +15,7 @@ import {
 import { Listing } from '../../../src/types';
 
 export default function MarketplaceIndex() {
+    const router = useRouter();
     const { userProfile } = useAuth();
     const [pendingListings, setPendingListings] = useState<Listing[]>([]);
     const [approvedListings, setApprovedListings] = useState<Listing[]>([]);
@@ -161,6 +162,14 @@ export default function MarketplaceIndex() {
                     )
                 )}
             </ScrollView>
+
+            {/* Floating Action Button */}
+            <TouchableOpacity
+                style={styles.fab}
+                onPress={() => router.push('/(admin)/marketplace/create')}
+            >
+                <Ionicons name="add" size={28} color="#fff" />
+            </TouchableOpacity>
         </View>
     );
 }
@@ -211,5 +220,21 @@ const styles = StyleSheet.create({
     emptyText: {
         fontSize: 16,
         color: '#999'
+    },
+    fab: {
+        position: 'absolute',
+        bottom: 20,
+        right: 20,
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: '#007AFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 6,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4
     }
 });
