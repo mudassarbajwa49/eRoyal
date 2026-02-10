@@ -15,7 +15,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../firebaseConfig';
 import { ApiResponse, RegisteredVehicle, RegisteredVehicleType } from '../types';
-import { uploadImage, uriToBlob } from './FirebaseStorageService';
+import { uploadVehicleImage } from './FirebaseStorageService';
 
 /**
  * Normalize vehicle number (uppercase + trim)
@@ -83,16 +83,7 @@ export const registerVehicle = async (
             };
         }
 
-        let imageUrl: string | undefined;
-
-        // Upload image if provided
-        if (imageUri) {
-            const blob = await uriToBlob(imageUri);
-            const uploadResult = await uploadImage(blob, 'vehicles');
-            imageUrl = uploadResult.url;
-        }
-
-        // Create vehicle document - only include fields that have values
+        // Create vehicle document first to get vehicleId
         const vehicleData: any = {
             vehicleNo: normalizedVehicleNo,
             type,
@@ -103,15 +94,26 @@ export const registerVehicle = async (
             updatedAt: serverTimestamp(),
         };
 
-        // Only add optional fields if they have values (Firestore rejects undefined)
+        // Only add optional fields if they have values
         if (color) {
             vehicleData.color = color;
         }
-        if (imageUrl) {
-            vehicleData.imageUrl = imageUrl;
-        }
 
         const docRef = await addDoc(collection(db, 'registeredVehicles'), vehicleData);
+
+        // Upload image after creating document (if provided)
+        if (imageUri) {
+            try {
+                const uploadResult = await uploadVehicleImage(imageUri, residentId, docRef.id);
+                // Update vehicle with image URL
+                await updateDoc(doc(db, 'registeredVehicles', docRef.id), {
+                    imageUrl: uploadResult.url
+                });
+            } catch (uploadError) {
+                console.error('Error uploading vehicle image:', uploadError);
+                // Don't fail registration if image upload fails
+            }
+        }
 
         return {
             success: true,
@@ -209,9 +211,13 @@ export const updateVehicle = async (
 
         // Upload new image if provided
         if (updates.imageUri) {
-            const blob = await uriToBlob(updates.imageUri);
-            const uploadResult = await uploadImage(blob, 'vehicles');
-            updateData.imageUrl = uploadResult.url;
+            try {
+                const uploadResult = await uploadVehicleImage(updates.imageUri, residentId, vehicleId);
+                updateData.imageUrl = uploadResult.url;
+            } catch (uploadError) {
+                console.error('Error uploading vehicle image:', uploadError);
+                // Continue with other updates even if image upload fails
+            }
         }
 
         await updateDoc(vehicleRef, updateData);

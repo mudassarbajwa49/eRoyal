@@ -1,7 +1,7 @@
 // Listing Service (Marketplace)
 // Business logic for property marketplace with admin approval
 
-import { addDoc, collection, doc, getDocs, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
 import { db } from '../../firebaseConfig';
 import { ApiResponse, CreateListingFormData, Listing } from '../types';
 import { STORAGE_FOLDERS, uploadMultipleImages } from './imageService';
@@ -25,20 +25,7 @@ export const createListing = async (
             };
         }
 
-        // Upload images to Firebase Storage
-        const uploadResult = await uploadMultipleImages(
-            listingData.photoUris,
-            STORAGE_FOLDERS.MARKETPLACE
-        );
-
-        if (!uploadResult.success || !uploadResult.urls) {
-            return {
-                success: false,
-                error: 'Failed to upload property images'
-            };
-        }
-
-        // Create listing document
+        // Create listing document first to get listingId
         const listingRef = await addDoc(collection(db, 'listings'), {
             type: listingData.type,
             price: listingData.price,
@@ -46,7 +33,7 @@ export const createListing = async (
             location: listingData.location,
             contact: listingData.contact,
             description: listingData.description.trim(),
-            photos: uploadResult.urls,
+            photos: [], // Will update after upload
             status: 'Pending', // Awaiting admin approval
             postedBy: postedBy,
             postedByName: postedByName,
@@ -55,6 +42,28 @@ export const createListing = async (
             reviewedBy: null,
             reviewedAt: null,
             rejectionReason: null
+        });
+
+        // Upload images to Firebase Storage with user-specific folder
+        const uploadResult = await uploadMultipleImages(
+            listingData.photoUris,
+            STORAGE_FOLDERS.MARKETPLACE,
+            postedBy,
+            listingRef.id
+        );
+
+        if (!uploadResult.success || !uploadResult.urls) {
+            // Delete the listing if image upload fails
+            await deleteDoc(doc(db, 'listings', listingRef.id));
+            return {
+                success: false,
+                error: 'Failed to upload property images'
+            };
+        }
+
+        // Update listing with photo URLs
+        await updateDoc(doc(db, 'listings', listingRef.id), {
+            photos: uploadResult.urls
         });
 
         return {

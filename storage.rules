@@ -2,109 +2,181 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     
-    // Helper function to check if user is authenticated
+    // ===========================
+    // HELPER FUNCTIONS
+    // ===========================
+    
     function isAuthenticated() {
       return request.auth != null;
     }
     
-    // Helper to validate file size (max 5MB)
-    function isValidSize() {
-      return request.resource.size < 5 * 1024 * 1024;
+    function isAdmin() {
+      // Check custom claims (set via Firebase Admin SDK or Firestore)
+      return request.auth.token.role == 'admin';
     }
     
-    // Helper to validate image type
-    function isImage() {
+    function isValidImage() {
       return request.resource.contentType.matches('image/.*');
     }
     
-    // ===========================
-    // COMPLAINT IMAGES
-    // ===========================
-    match /complaints/{fileName} {
-      // Anyone authenticated can read complaint images
-      allow read: if isAuthenticated();
-      
-      // Authenticated users can upload images
-      // Must be image type and under 5MB
-      allow write: if isAuthenticated() && isImage() && isValidSize();
-      
-      // Only allow delete by admins (would need custom token or check in app)
-      allow delete: if isAuthenticated();
+    function isValidSize(maxSizeMB) {
+      return request.resource.size < maxSizeMB * 1024 * 1024;
     }
     
     // ===========================
     // BILL PAYMENT PROOFS
     // ===========================
-    match /bills/{fileName} {
-      // Anyone authenticated can read bill images
+    // Structure: bills/residentId/billId_timestamp
+    match /bills/{residentId}/{fileName} {
+      // Anyone authenticated can read (admin needs to verify payments)
       allow read: if isAuthenticated();
       
-      // Authenticated users can upload payment proofs
-      // Must be image type and under 5MB
-      allow write: if isAuthenticated() && isImage() && isValidSize();
+      // Only the resident can upload to their own folder
+      // Must be image type and under 2MB
+      allow create: if isAuthenticated() 
+                    && request.auth.uid == residentId
+                    && isValidImage()
+                    && isValidSize(2);
       
-      // Don't allow delete (keep for audit trail)
-      allow delete: if false;
+      // No updates or deletes (maintain audit trail)
+      allow update, delete: if false;
     }
     
-    // ===========================
-    // ANNOUNCEMENT IMAGES
-    // ===========================
-    match /announcements/{fileName} {
-      // Anyone authenticated can read announcements
+    // Legacy flat structure for backward compatibility
+    match /bills/{fileName} {
       allow read: if isAuthenticated();
-      
-      // Only authenticated users can upload
-      // (Frontend should restrict to admins)
-      allow write: if isAuthenticated() && isImage() && isValidSize();
-      
-      // Allow delete for cleanup
-      allow delete: if isAuthenticated();
+      allow write: if isAuthenticated() && isValidImage() && isValidSize(2);
+      allow delete: if false;
     }
     
     // ===========================
     // VEHICLE IMAGES
     // ===========================
-    match /vehicles/{fileName} {
+    // Structure: vehicles/residentId/vehicleId_timestamp
+    match /vehicles/{residentId}/{fileName} {
       // Anyone authenticated can read
       allow read: if isAuthenticated();
       
-      // Authenticated users can upload vehicle images
-      allow write: if isAuthenticated() && isImage() && isValidSize();
+      // Only the resident can upload to their own folder
+      // Must be image type and under 3MB
+      allow create: if isAuthenticated()
+                    && request.auth.uid == residentId
+                    && isValidImage()
+                    && isValidSize(3);
       
-      // Allow delete
+      // Only owner can delete their vehicle images
+      allow delete: if isAuthenticated() 
+                    && request.auth.uid == residentId;
+      
+      // No updates (delete and re-upload instead)
+      allow update: if false;
+    }
+    
+    // Legacy flat structure for backward compatibility
+    match /vehicles/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isValidImage() && isValidSize(3);
       allow delete: if isAuthenticated();
+    }
+    
+    // ===========================
+    // MARKETPLACE LISTINGS
+    // ===========================
+    // Structure: marketplace/residentId/listingId_index_timestamp
+    match /marketplace/{residentId}/{fileName} {
+      // Anyone authenticated can read
+      allow read: if isAuthenticated();
+      
+      // Only the resident can upload to their own folder
+      // Must be image type and under 4MB
+      allow create: if isAuthenticated()
+                    && request.auth.uid == residentId
+                    && isValidImage()
+                    && isValidSize(4);
+      
+      // Owner or admin can delete
+      allow delete: if isAuthenticated() 
+                    && (request.auth.uid == residentId || isAdmin());
+      
+      // No updates
+      allow update: if false;
+    }
+    
+    // Legacy flat structure for backward compatibility
+    match /marketplace/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isValidImage() && isValidSize(4);
+      allow delete: if isAuthenticated();
+    }
+    
+    // ===========================
+    // COMPLAINT IMAGES
+    // ===========================
+    // Structure: complaints/residentId/complaintId_index_timestamp
+    match /complaints/{residentId}/{fileName} {
+      // Anyone authenticated can read
+      allow read: if isAuthenticated();
+      
+      // Only the resident can upload to their own folder
+      // Must be image type and under 3MB
+      allow create: if isAuthenticated()
+                    && request.auth.uid == residentId
+                    && isValidImage()
+                    && isValidSize(3);
+      
+      // Only admin can delete (for moderation)
+      allow delete: if isAdmin();
+      
+      // No updates
+      allow update: if false;
+    }
+    
+    // Legacy flat structure for backward compatibility
+    match /complaints/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isValidImage() && isValidSize(3);
+      allow delete: if isAuthenticated();
+    }
+    
+    // ===========================
+    // ANNOUNCEMENTS
+    // ===========================
+    // Structure: announcements/announcementId_index_timestamp
+    match /announcements/{fileName} {
+      // Anyone authenticated can read
+      allow read: if isAuthenticated();
+      
+      // Only admin can upload (frontend should also restrict)
+      // Must be image type and under 5MB
+      allow create: if isAdmin()
+                    && isValidImage()
+                    && isValidSize(5);
+      
+      // Only admin can delete
+      allow delete: if isAdmin();
+      
+      // No updates
+      allow update: if false;
     }
     
     // ===========================
     // PROFILE PICTURES
     // ===========================
+    // Structure: profiles/userId/filename
     match /profiles/{userId}/{fileName} {
       // Anyone authenticated can read profiles
       allow read: if isAuthenticated();
       
-      // Users can only upload to their own profile folder
-      allow write: if isAuthenticated() && 
-                      request.auth.uid == userId && 
-                      isImage() && 
-                      isValidSize();
+      // Only user can upload/update their own profile picture
+      // Must be image type and under 1MB
+      allow create, update: if isAuthenticated()
+                            && request.auth.uid == userId
+                            && isValidImage()
+                            && isValidSize(1);
       
-      // Users can delete their own profile pictures
-      allow delete: if isAuthenticated() && request.auth.uid == userId;
-    }
-    
-    // ===========================
-    // MARKETPLACE LISTING IMAGES
-    // ===========================
-    match /marketplace/{fileName} {
-      // Anyone authenticated can read
-      allow read: if isAuthenticated();
-      
-      // Authenticated users can upload
-      allow write: if isAuthenticated() && isImage() && isValidSize();
-      
-      // Allow delete
-      allow delete: if isAuthenticated();
+      // Only user can delete their own profile pictures
+      allow delete: if isAuthenticated() 
+                    && request.auth.uid == userId;
     }
   }
 }
