@@ -1,6 +1,8 @@
 // Admin Marketplace Index
 // Approve or reject property listings
 
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LoadingSpinner } from '../../../src/components/common/LoadingSpinner';
