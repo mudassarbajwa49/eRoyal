@@ -7,14 +7,16 @@ import { ApiResponse, CreateListingFormData, Listing } from '../types';
 import { STORAGE_FOLDERS, uploadMultipleImages } from './imageService';
 
 /**
- * Create a new property listing (Resident)
- * Status starts as 'Pending' - requires admin approval
+ * Create a new property listing
+ * For residents: Status starts as 'Pending' - requires admin approval
+ * For admins: Status is 'Approved' - immediately visible
  */
 export const createListing = async (
     listingData: CreateListingFormData,
     postedBy: string,
     postedByName: string,
-    postedByHouse: string
+    postedByHouse: string,
+    isAdmin: boolean = false
 ): Promise<ApiResponse> => {
     try {
         // Validate images
@@ -25,6 +27,16 @@ export const createListing = async (
             };
         }
 
+        // Admin listings are auto-approved, resident listings are pending
+        const status = isAdmin ? 'Approved' : 'Pending';
+        const reviewerInfo = isAdmin ? {
+            reviewedBy: postedBy,
+            reviewedAt: serverTimestamp()
+        } : {
+            reviewedBy: null,
+            reviewedAt: null
+        };
+
         // Create listing document first to get listingId
         const listingRef = await addDoc(collection(db, 'listings'), {
             type: listingData.type,
@@ -34,13 +46,12 @@ export const createListing = async (
             contact: listingData.contact,
             description: listingData.description.trim(),
             photos: [], // Will update after upload
-            status: 'Pending', // Awaiting admin approval
+            status: status,
             postedBy: postedBy,
             postedByName: postedByName,
             postedByHouse: postedByHouse,
             createdAt: serverTimestamp(),
-            reviewedBy: null,
-            reviewedAt: null,
+            ...reviewerInfo,
             rejectionReason: null
         });
 
@@ -66,10 +77,14 @@ export const createListing = async (
             photos: uploadResult.urls
         });
 
+        const message = isAdmin
+            ? 'Listing published successfully'
+            : 'Listing submitted for admin approval';
+
         return {
             success: true,
             data: { listingId: listingRef.id },
-            message: 'Listing submitted for admin approval'
+            message: message
         };
     } catch (error) {
         console.error('Error creating listing:', error);

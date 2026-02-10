@@ -81,42 +81,60 @@ export default function AdminCreateListingScreen() {
     };
 
     const handleSubmit = async () => {
-        if (!validateForm() || !userProfile) return;
+        if (!validateForm() || !userProfile) {
+            console.log('Validation failed or no user profile');
+            return;
+        }
+
+        console.log('Starting listing creation...', {
+            images: selectedImages.length,
+            userId: userProfile.uid
+        });
 
         setLoading(true);
 
-        const result = await createListing(
-            {
-                ...formData,
-                price: parseFloat(formData.price),
-                photoUris: selectedImages
-            },
-            userProfile.uid,
-            userProfile.name,
-            'Admin' // Admin doesn't have house number
-        );
-
-        setLoading(false);
-
-        if (result.success) {
-            // Clear form
-            setFormData({
-                type: 'Rent',
-                price: '',
-                size: '',
-                location: '',
-                contact: '',
-                description: ''
-            });
-            setSelectedImages([]);
-
-            Alert.alert(
-                'Success',
-                'Listing posted successfully!',
-                [{ text: 'OK', onPress: () => router.back() }]
+        try {
+            const result = await createListing(
+                {
+                    ...formData,
+                    price: parseFloat(formData.price),
+                    photoUris: selectedImages
+                },
+                userProfile.uid,
+                userProfile.name,
+                'Admin', // Admin doesn't have house number
+                true // isAdmin flag - auto-approves the listing
             );
-        } else {
-            Alert.alert('Error', result.error || 'Failed to create listing');
+
+            setLoading(false);
+
+            console.log('Listing creation result:', result);
+
+            if (result.success) {
+                // Clear form
+                setFormData({
+                    type: 'Rent',
+                    price: '',
+                    size: '',
+                    location: '',
+                    contact: '',
+                    description: ''
+                });
+                setSelectedImages([]);
+
+                Alert.alert(
+                    'Success',
+                    'Listing posted successfully!',
+                    [{ text: 'OK', onPress: () => router.back() }]
+                );
+            } else {
+                console.error('Listing creation error:', result.error);
+                Alert.alert('Error', result.error || 'Failed to create listing');
+            }
+        } catch (error) {
+            setLoading(false);
+            console.error('Exception during listing creation:', error);
+            Alert.alert('Error', 'An unexpected error occurred');
         }
     };
 

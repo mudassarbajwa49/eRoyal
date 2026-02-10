@@ -82,15 +82,15 @@ service firebase.storage {
     // ===========================
     // MARKETPLACE LISTINGS
     // ===========================
-    // Structure: marketplace/residentId/listingId_index_timestamp
-    match /marketplace/{residentId}/{fileName} {
+    // Structure: marketplace/residentId/listingId_index_timestamp/filename
+    match /marketplace/{residentId}/{subfolder}/{fileName} {
       // Anyone authenticated can read
       allow read: if isAuthenticated();
       
-      // Only the resident can upload to their own folder
+      // Only the resident or admin can upload to their own folder
       // Must be image type and under 4MB
       allow create: if isAuthenticated()
-                    && request.auth.uid == residentId
+                    && (request.auth.uid == residentId || isAdmin())
                     && isValidImage()
                     && isValidSize(4);
       

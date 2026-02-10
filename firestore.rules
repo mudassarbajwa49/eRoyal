@@ -11,24 +11,23 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // Get user's role from users collection
-    function getUserRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
-    }
-    
-    // Check if user is admin (handles both 'admin' and 'Admin')
+    // Check if user is admin using custom claims token (case-insensitive)
+    // This is consistent with storage rules
     function isAdmin() {
-      return isAuthenticated() && (getUserRole() == 'admin' || getUserRole() == 'Admin');
+      return isAuthenticated() && 
+             (request.auth.token.role == 'admin' || request.auth.token.role == 'Admin');
     }
     
-    // Check if user is resident (handles both cases)
+    // Check if user is resident using custom claims token (case-insensitive)
     function isResident() {
-      return isAuthenticated() && (getUserRole() == 'resident' || getUserRole() == 'Resident');
+      return isAuthenticated() && 
+             (request.auth.token.role == 'resident' || request.auth.token.role == 'Resident');
     }
     
-    // Check if user is security staff (handles both cases)
+    // Check if user is security staff using custom claims token (case-insensitive)
     function isSecurity() {
-      return isAuthenticated() && (getUserRole() == 'security' || getUserRole() == 'Security');
+      return isAuthenticated() && 
+             (request.auth.token.role == 'security' || request.auth.token.role == 'Security');
     }
     
     // Check if user owns this resource
@@ -235,8 +234,8 @@ service cloud.firestore {
       // Everyone authenticated can read listings
       allow read: if isAuthenticated();
       
-      // Residents can create listings
-      allow create: if isResident() && 
+      // Residents and Admins can create listings
+      allow create: if (isResident() || isAdmin()) && 
                        request.resource.data.postedBy == request.auth.uid;
       
       // Residents can update their own listings
