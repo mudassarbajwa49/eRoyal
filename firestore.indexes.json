@@ -5,6 +5,28 @@
             "queryScope": "COLLECTION",
             "fields": [
                 {
+                    "fieldPath": "isArchived",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "residentId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "month",
+                    "order": "DESCENDING"
+                },
+                {
+                    "fieldPath": "status",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "bills",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
                     "fieldPath": "residentId",
                     "order": "ASCENDING"
                 },
@@ -92,6 +114,94 @@
                 },
                 {
                     "fieldPath": "entryTime",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "complaints",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "residentId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "addedToBill",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "chargeAmount",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "vehicleLogs",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "exitTime",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "entryTime",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "vehicleLogs",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "residentId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "entryTime",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "listings",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "status",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "listings",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "postedBy",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "registeredVehicles",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "residentId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
                     "order": "DESCENDING"
                 }
             ]

@@ -205,7 +205,10 @@ export const updateComplaintStatus = async (
 
 /**
  * Resolve complaint with optional charge (Admin)
- * Automatically adds charge to resident's current monthly bill
+ * 
+ * BILLING LOGIC:
+ * - If current month bill exists AND is Unpaid/Draft: Add charge immediately
+ * - If no bill exists OR bill is already Paid: Mark as "unbilled" for next generation
  */
 export const resolveComplaintWithCharge = async (
     complaintId: string,
@@ -247,10 +250,15 @@ export const resolveComplaintWithCharge = async (
             const now = new Date();
             const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-            // Find or get current month's bill
+            // Find current month's bill
             const currentBill = await getResidentCurrentBill(residentId, currentMonth);
 
-            if (currentBill && currentBill.id) {
+            // Check if bill exists AND is still Draft (NOT YET SENT to resident)
+            // Once a bill is sent (status = Unpaid/Pending/Paid), we don't modify it
+            if (currentBill && currentBill.id && currentBill.status === 'Draft') {
+                // ====================================
+                // IMMEDIATE: Add charge to Draft bill (not yet sent)
+                // ====================================
                 billId = currentBill.id;
 
                 // Add complaint charge to bill
@@ -268,13 +276,13 @@ export const resolveComplaintWithCharge = async (
                     };
                 }
 
-                // Update complaint with charge info
+                // Update complaint with charge info - BILLED IMMEDIATELY
                 await updateDoc(complaintRef, {
                     status: 'Resolved' as ComplaintStatus,
                     resolutionNotes: resolutionNotes || null,
                     resolvedBy: adminUid,
                     chargeAmount,
-                    addedToBill: true,
+                    addedToBill: true,  // Marked as billed
                     billId,
                     updatedAt: serverTimestamp(),
                     resolvedAt: serverTimestamp(),
@@ -282,12 +290,28 @@ export const resolveComplaintWithCharge = async (
 
                 return {
                     success: true,
-                    message: `Complaint resolved. Rs. ${chargeAmount} added to monthly bill.`,
+                    message: `Complaint resolved. Rs. ${chargeAmount.toLocaleString()} added to current bill.`,
                 };
             } else {
+                // ====================================
+                // DEFERRED: No open bill, save for next generation
+                // ====================================
+
+                // Update complaint - MARK AS UNBILLED for next bill generation
+                await updateDoc(complaintRef, {
+                    status: 'Resolved' as ComplaintStatus,
+                    resolutionNotes: resolutionNotes || null,
+                    resolvedBy: adminUid,
+                    chargeAmount,
+                    addedToBill: false,  // Will be picked up on next bill generation
+                    billId: null,
+                    updatedAt: serverTimestamp(),
+                    resolvedAt: serverTimestamp(),
+                });
+
                 return {
-                    success: false,
-                    error: 'No active bill found for current month. Please generate monthly bills first.',
+                    success: true,
+                    message: `Complaint resolved. Rs. ${chargeAmount.toLocaleString()} will be added to next month's bill.`,
                 };
             }
         } else {
@@ -296,6 +320,8 @@ export const resolveComplaintWithCharge = async (
                 status: 'Resolved' as ComplaintStatus,
                 resolutionNotes: resolutionNotes || null,
                 resolvedBy: adminUid,
+                chargeAmount: 0,
+                addedToBill: true,  // No charge, nothing to bill
                 updatedAt: serverTimestamp(),
                 resolvedAt: serverTimestamp(),
             });

@@ -12,10 +12,12 @@ import {
     serverTimestamp,
     Timestamp,
     updateDoc,
-    where
+    where,
+    writeBatch
 } from 'firebase/firestore';
 import { db } from '../../firebaseConfig';
 import { ApiResponse, Bill, BillBreakdown, BillComplaintCharge, BillStatus } from '../types';
+import { logger } from '../utils/logger';
 import { dataCache } from './DataCache';
 
 /**
@@ -26,8 +28,18 @@ const calculateBillTotal = (breakdown: BillBreakdown): number => {
     return breakdown.baseCharges + complaintTotal + breakdown.previousDues;
 };
 
+// Late fee percentage (10%)
+const LATE_FEE_PERCENTAGE = 0.10;
+
 /**
  * Generate monthly bills for all residents (Admin)
+ * 
+ * ARCHITECTURE:
+ * 1. Uses writeBatch for atomic operations (prevents half-finished runs)
+ * 2. Automatically picks up unbilled complaint charges
+ * 3. Adds late fees for overdue bills
+ * 4. Creates bills as 'Unpaid' so residents see them immediately
+ * 
  * @param month Format: "YYYY-MM" (e.g., "2026-01")
  * @param baseCharges Default monthly charges
  * @param adminId Admin creating the bills
@@ -38,6 +50,11 @@ export const generateMonthlyBills = async (
     adminId: string
 ): Promise<ApiResponse> => {
     try {
+        const batch = writeBatch(db);
+        let billsCreated = 0;
+        let skippedCount = 0;
+        let complaintsProcessed = 0;
+
         // Get all residents (users with role 'resident')
         const usersQuery = query(
             collection(db, 'users'),
@@ -45,8 +62,7 @@ export const generateMonthlyBills = async (
         );
         const usersSnapshot = await getDocs(usersQuery);
 
-        const billsToCreate: any[] = [];
-        let skippedCount = 0;
+        logger.log(`Generating bills for ${usersSnapshot.size} residents for ${month}`);
 
         for (const userDoc of usersSnapshot.docs) {
             const userData = userDoc.data();
@@ -62,12 +78,20 @@ export const generateMonthlyBills = async (
 
             // Skip if bill already exists for this resident for this month
             if (!existingBillSnapshot.empty) {
-                console.log(`Skipping ${userData.name} - bill already exists for ${month}`);
+                logger.log(`Skipping ${userData.name} - bill already exists for ${month}`);
                 skippedCount++;
                 continue;
             }
 
-            // Check for unpaid bills from previous months
+            // Initialize bill breakdown
+            let billAmount = baseCharges;
+            const complaintCharges: BillComplaintCharge[] = [];
+            let previousDues = 0;
+            let lateFee = 0;
+
+            // ====================================
+            // 1. CHECK FOR UNPAID PREVIOUS BILLS
+            // ====================================
             const previousBillsQuery = query(
                 collection(db, 'bills'),
                 where('residentId', '==', residentId),
@@ -75,28 +99,71 @@ export const generateMonthlyBills = async (
             );
             const previousBillsSnapshot = await getDocs(previousBillsQuery);
 
-            let previousDues = 0;
             previousBillsSnapshot.forEach((billDoc) => {
                 const billData = billDoc.data();
                 // Only count unpaid or pending bills
                 if (billData.status === 'Unpaid' || billData.status === 'Pending') {
                     previousDues += billData.amount || 0;
+                    // Add 10% late fee for unpaid bills
+                    lateFee += (billData.amount || 0) * LATE_FEE_PERCENTAGE;
                 }
             });
 
-            // Create bill breakdown
+            // ====================================
+            // 2. FIND UNBILLED COMPLAINTS
+            // ====================================
+            const unbilledComplaintsQuery = query(
+                collection(db, 'complaints'),
+                where('residentId', '==', residentId),
+                where('addedToBill', '==', false),
+                where('chargeAmount', '>', 0)
+            );
+            const unbilledComplaintsSnapshot = await getDocs(unbilledComplaintsQuery);
+
+            // Generate new bill ID first (so we can reference it)
+            const newBillRef = doc(collection(db, 'bills'));
+            const newBillId = newBillRef.id;
+
+            // Process each unbilled complaint
+            unbilledComplaintsSnapshot.forEach((complaintDoc) => {
+                const complaintData = complaintDoc.data();
+
+                // Add to complaint charges breakdown
+                complaintCharges.push({
+                    complaintId: complaintDoc.id,
+                    complaintNumber: complaintData.complaintNumber || `C-${complaintDoc.id.slice(-6)}`,
+                    description: complaintData.title || 'Complaint charge',
+                    amount: complaintData.chargeAmount,
+                });
+
+                billAmount += complaintData.chargeAmount;
+                complaintsProcessed++;
+
+                // Mark complaint as billed in the same batch (atomic)
+                const complaintRef = doc(db, 'complaints', complaintDoc.id);
+                batch.update(complaintRef, {
+                    addedToBill: true,
+                    billId: newBillId,
+                });
+            });
+
+            // ====================================
+            // 3. CREATE BILL BREAKDOWN
+            // ====================================
             const breakdown: BillBreakdown = {
                 baseCharges,
-                complaintCharges: [], // Will be added later by complaint charges
-                previousDues,
-                total: baseCharges + previousDues,
+                complaintCharges,
+                previousDues: previousDues + lateFee, // Include late fee in previous dues
+                total: billAmount + previousDues + lateFee,
             };
 
             // Parse due date correctly
             const [year, monthNum] = month.split('-');
             const dueDate = new Date(parseInt(year), parseInt(monthNum) - 1, 25); // 25th of the month
 
-            // Create bill document
+            // ====================================
+            // 4. CREATE BILL DOCUMENT
+            // ====================================
             const billData: Omit<Bill, 'id'> = {
                 residentId,
                 residentName: userData.name,
@@ -105,9 +172,9 @@ export const generateMonthlyBills = async (
                 breakdown,
                 amount: breakdown.total,
                 dueDate: Timestamp.fromDate(dueDate),
-                status: 'Draft' as BillStatus,
-                sentBy: null,
-                sentAt: null,
+                status: 'Unpaid' as BillStatus, // FIX: Create as 'Unpaid' so residents see immediately
+                sentBy: adminId,
+                sentAt: serverTimestamp(),
                 isArchived: false,
                 proofUrl: null,
                 proofUploadedAt: null,
@@ -116,33 +183,36 @@ export const generateMonthlyBills = async (
                 createdAt: serverTimestamp(),
             };
 
-            billsToCreate.push(billData);
+            // Add bill to batch
+            batch.set(newBillRef, billData);
+            billsCreated++;
         }
 
-        // Create all bills
-        const promises = billsToCreate.map(billData =>
-            addDoc(collection(db, 'bills'), billData)
-        );
-        await Promise.all(promises);
+        // ====================================
+        // 5. COMMIT ALL CHANGES ATOMICALLY
+        // ====================================
+        await batch.commit();
+        logger.success(`Batch committed: ${billsCreated} bills, ${complaintsProcessed} complaints processed`);
 
         // Invalidate caches after creating bills
         dataCache.invalidateAllBills();
-        console.log('🔄 Invalidated bills cache after generation');
+        logger.cache('Invalidated bills cache after generation');
 
         const message = skippedCount > 0
-            ? `${billsToCreate.length} bills created, ${skippedCount} skipped (already exist) for ${month}`
-            : `${billsToCreate.length} bills generated for ${month}`;
+            ? `${billsCreated} bills created (${complaintsProcessed} complaint charges), ${skippedCount} skipped for ${month}`
+            : `${billsCreated} bills generated with ${complaintsProcessed} complaint charges for ${month}`;
 
         return {
             success: true,
             data: {
-                billsCreated: billsToCreate.length,
-                billsSkipped: skippedCount
+                billsCreated,
+                billsSkipped: skippedCount,
+                complaintsProcessed,
             },
             message,
         };
     } catch (error) {
-        console.error('Error generating monthly bills:', error);
+        logger.error('Error generating monthly bills:', error);
         return {
             success: false,
             error: `Failed to generate monthly bills: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -320,6 +390,55 @@ export const sendBillToResident = async (
         return {
             success: false,
             error: 'Failed to send bill to resident',
+        };
+    }
+};
+
+/**
+ * Publish all draft bills (send to all residents at once)
+ */
+export const publishAllDraftBills = async (adminId: string): Promise<ApiResponse> => {
+    try {
+        const draftBillsQuery = query(
+            collection(db, 'bills'),
+            where('status', '==', 'Draft')
+        );
+
+        const snapshot = await getDocs(draftBillsQuery);
+
+        if (snapshot.empty) {
+            return {
+                success: true,
+                message: 'No draft bills to publish',
+            };
+        }
+
+        const batch = writeBatch(db);
+        let count = 0;
+
+        snapshot.docs.forEach(billDoc => {
+            batch.update(doc(db, 'bills', billDoc.id), {
+                status: 'Unpaid' as BillStatus,
+                sentBy: adminId,
+                sentAt: serverTimestamp(),
+            });
+            count++;
+        });
+
+        await batch.commit();
+
+        // Invalidate cache
+        dataCache.invalidateAllBills();
+
+        return {
+            success: true,
+            message: `${count} bill${count !== 1 ? 's' : ''} sent to residents successfully`,
+        };
+    } catch (error) {
+        logger.error('Error publishing draft bills:', error);
+        return {
+            success: false,
+            error: 'Failed to publish bills',
         };
     }
 };

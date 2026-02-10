@@ -1,9 +1,9 @@
-// Marketplace Layout (Resident)
+// Announcements Layout (Resident)
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import { TouchableOpacity } from 'react-native';
 
-export default function MarketplaceLayout() {
+export default function AnnouncementsLayout() {
     const router = useRouter();
 
     return (
@@ -20,8 +20,7 @@ export default function MarketplaceLayout() {
                 ),
             }}
         >
-            <Stack.Screen name="index" options={{ title: 'Marketplace', headerShown: true }} />
-            <Stack.Screen name="create" options={{ title: 'Post Listing', headerShown: true }} />
+            <Stack.Screen name="index" options={{ title: 'Announcements', headerShown: true }} />
         </Stack>
     );
 }

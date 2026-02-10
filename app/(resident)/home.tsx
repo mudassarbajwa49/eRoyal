@@ -9,14 +9,14 @@
  */
 
 import { useRouter } from 'expo-router';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import React from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { db } from '../../firebaseConfig';
 import { Avatar } from '../../src/components/common/Avatar';
 import { Card } from '../../src/components/common/Card';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useBreakpoint } from '../../src/hooks/useResponsive';
-import { getResidentComplaints } from '../../src/services/ComplaintManagementService';
-import { getResidentBills } from '../../src/services/MonthlyBillingService';
 import { borderRadius, fontSize, spacing } from '../../src/utils/responsive';
 
 /**
@@ -42,37 +42,48 @@ export default function ResidentHome() {
     });
     const [refreshing, setRefreshing] = React.useState(false);
 
-    /**
-     * Load dashboard statistics
-     * Fetches bills and complaints data in parallel
-     */
-    const loadStats = async () => {
+    // Set up real-time listeners for resident stats
+    React.useEffect(() => {
         if (!userProfile) return;
 
-        const [bills, complaints] = await Promise.all([
-            getResidentBills(userProfile.uid),
-            getResidentComplaints(userProfile.uid)
-        ]);
+        // Listen to unpaid bills
+        const billsUnsub = onSnapshot(
+            query(
+                collection(db, 'bills'),
+                where('residentId', '==', userProfile.uid),
+                where('status', '==', 'Unpaid')
+            ),
+            (snapshot) => {
+                setStats(prev => ({ ...prev, unpaidBills: snapshot.size }));
+            }
+        );
 
-        setStats({
-            unpaidBills: bills.filter(b => b.status === 'Unpaid').length,
-            pendingComplaints: complaints.filter(c => c.status === 'Pending').length,
-            vehiclesInside: 0 // Can be implemented later
-        });
-    };
+        // Listen to pending complaints
+        const complaintsUnsub = onSnapshot(
+            query(
+                collection(db, 'complaints'),
+                where('userId', '==', userProfile.uid),
+                where('status', '==', 'Pending')
+            ),
+            (snapshot) => {
+                setStats(prev => ({ ...prev, pendingComplaints: snapshot.size }));
+            }
+        );
 
-    // Load stats on mount
-    React.useEffect(() => {
-        loadStats();
-    }, []);
+        // Cleanup listeners on unmount
+        return () => {
+            billsUnsub();
+            complaintsUnsub();
+        };
+    }, [userProfile]);
 
     /**
      * Refresh data when user pulls down
      */
     const onRefresh = async () => {
         setRefreshing(true);
-        await loadStats();
-        setRefreshing(false);
+        // Just toggle refresh state - real-time listeners handle actual updates
+        setTimeout(() => setRefreshing(false), 500);
     };
 
     // Quick status card configuration
@@ -84,6 +95,7 @@ export default function ResidentHome() {
             // Red if unpaid bills exist, green otherwise
             color: stats.unpaidBills > 0 ? '#EF4444' : '#10B981',
             bgColor: stats.unpaidBills > 0 ? '#FEE2E2' : '#D1FAE5',
+            route: '/(resident)/bills'
         },
         {
             title: 'Open Complaints',
@@ -91,6 +103,7 @@ export default function ResidentHome() {
             icon: '🛠',
             color: '#F59E0B',
             bgColor: '#FEF3C7',
+            route: '/(resident)/complaints'
         },
         {
             title: 'Vehicles Inside',
@@ -98,6 +111,7 @@ export default function ResidentHome() {
             icon: '🚗',
             color: '#3B82F6',
             bgColor: '#DBEAFE',
+            route: '/(resident)/vehicles'
         },
     ];
 
@@ -179,7 +193,7 @@ export default function ResidentHome() {
                     contentContainerStyle={[styles.statusCardsContainer, { gap: spacing.md, marginBottom: spacing.xl }]}
                 >
                     {statusCards.map((card, index) => (
-                        <View
+                        <TouchableOpacity
                             key={index}
                             style={[
                                 styles.statusCard,
@@ -190,6 +204,8 @@ export default function ResidentHome() {
                                     padding: spacing.lg
                                 }
                             ]}
+                            onPress={() => router.push(card.route as any)}
+                            activeOpacity={0.7}
                         >
                             <Text style={[styles.statusIcon, { marginBottom: spacing.sm }]}>
                                 {card.icon}
@@ -200,7 +216,7 @@ export default function ResidentHome() {
                             <Text style={[styles.statusTitle, { fontSize: fontSize.xs }]}>
                                 {card.title}
                             </Text>
-                        </View>
+                        </TouchableOpacity>
                     ))}
                 </ScrollView>
 

@@ -16,19 +16,19 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
     
-    // Check if user is admin
+    // Check if user is admin (handles both 'admin' and 'Admin')
     function isAdmin() {
-      return isAuthenticated() && getUserRole() == 'admin';
+      return isAuthenticated() && (getUserRole() == 'admin' || getUserRole() == 'Admin');
     }
     
-    // Check if user is resident
+    // Check if user is resident (handles both cases)
     function isResident() {
-      return isAuthenticated() && getUserRole() == 'resident';
+      return isAuthenticated() && (getUserRole() == 'resident' || getUserRole() == 'Resident');
     }
     
-    // Check if user is security staff
+    // Check if user is security staff (handles both cases)
     function isSecurity() {
-      return isAuthenticated() && getUserRole() == 'security';
+      return isAuthenticated() && (getUserRole() == 'security' || getUserRole() == 'Security');
     }
     
     // Check if user owns this resource
@@ -80,8 +80,18 @@ service cloud.firestore {
       allow read: if isAdmin() || 
                      (isResident() && resource.data.residentId == request.auth.uid);
       
-      // Only admins can create/update bills
-      allow create, update: if isAdmin();
+      // Only admins can create bills
+      allow create: if isAdmin();
+      
+      // Admins can update any bill
+      // Residents can ONLY update their own bills AND only upload payment proof
+      allow update: if isAdmin() || 
+                       (isResident() && 
+                        resource.data.residentId == request.auth.uid &&
+                        // Only allow changing proof-related fields
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['proofUrl', 'proofUploadedAt', 'status']) &&
+                        // Can only change status to 'Pending' (awaiting verification)
+                        request.resource.data.status == 'Pending');
       
       // Never allow delete (keep for audit trail)
       allow delete: if false;
@@ -140,7 +150,27 @@ service cloud.firestore {
     }
     
     // ===========================
-    // VEHICLE LOGS COLLECTION
+    // REGISTERED VEHICLES COLLECTION
+    // ===========================
+    match /registeredVehicles/{vehicleId} {
+      // Everyone authenticated can read (security needs this for verification)
+      allow read: if isAuthenticated();
+      
+      // Residents can register their own vehicles
+      allow create: if isResident() && 
+                       request.resource.data.residentId == request.auth.uid;
+      
+      // Residents can update their own vehicles
+      // Admins can update any vehicle
+      allow update: if isAdmin() || 
+                       (isResident() && resource.data.residentId == request.auth.uid);
+      
+      // Only residents can delete their own vehicles
+      allow delete: if isResident() && resource.data.residentId == request.auth.uid;
+    }
+    
+    // ===========================
+    // VEHICLE LOGS COLLECTION (snake_case - legacy)
     // ===========================
     match /vehicle_logs/{logId} {
       // Everyone authenticated can read
@@ -157,10 +187,52 @@ service cloud.firestore {
     }
     
     // ===========================
-    // MARKETPLACE LISTINGS
+    // VEHICLE LOGS COLLECTION (camelCase - current)
+    // ===========================
+    match /vehicleLogs/{logId} {
+      // Everyone authenticated can read
+      allow read: if isAuthenticated();
+      
+      // Security staff can create vehicle logs
+      allow create: if isSecurity();
+      
+      // Security staff can update logs (for exit time)
+      allow update: if isSecurity();
+      
+      // Admins can also read/update
+      allow read, update: if isAdmin();
+      
+      // Never allow delete (audit trail)
+      allow delete: if false;
+    }
+    
+    // ===========================
+    // MARKETPLACE LISTINGS (legacy collection name)
     // ===========================
     match /marketplace/{listingId} {
       // Everyone authenticated can read approved listings
+      allow read: if isAuthenticated();
+      
+      // Residents can create listings
+      allow create: if isResident() && 
+                       request.resource.data.postedBy == request.auth.uid;
+      
+      // Residents can update their own listings
+      // Admins can update any listing (for approval/rejection)
+      allow update: if isAdmin() || 
+                       (isResident() && resource.data.postedBy == request.auth.uid);
+      
+      // Residents can delete their own listings
+      // Admins can delete any listing
+      allow delete: if isAdmin() || 
+                       (isResident() && resource.data.postedBy == request.auth.uid);
+    }
+    
+    // ===========================
+    // LISTINGS COLLECTION (used by MarketplaceListingService)
+    // ===========================
+    match /listings/{listingId} {
+      // Everyone authenticated can read listings
       allow read: if isAuthenticated();
       
       // Residents can create listings

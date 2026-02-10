@@ -1,25 +1,23 @@
 /**
  * Admin Vehicle Logs Screen
- * View all vehicle entry/exit logs
+ * Enhanced view with statistics, tabs, and house grouping
  * 
- * This screen shows:
- * - Currently active vehicles (inside the society)
- * - Recent vehicle logs (last 50)
- * - Pull to refresh for latest data
+ * Features:
+ * - Today's statistics (entries, exits, currently inside)
+ * - Tabs: Currently Inside / All Logs / By House
+ * - Pull to refresh
  */
 
 import React from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Card } from '../../../src/components/common/Card';
 import { LoadingSpinner } from '../../../src/components/common/LoadingSpinner';
-import { useBreakpoint } from '../../../src/hooks/useResponsive';
-import { getActiveVehicles, getAllVehicleLogs } from '../../../src/services/VehicleEntryLogService';
+import { getActiveVehicles, getAllVehicleLogs, getLogsByHouse, getTodayStats } from '../../../src/services/VehicleEntryLogService';
 import { VehicleLog } from '../../../src/types';
 import { borderRadius, fontSize, spacing } from '../../../src/utils/responsive';
 
-/**
- * Get color for vehicle type badge
- */
+type TabType = 'inside' | 'logs' | 'byHouse';
+
 function getTypeColor(type: string): string {
     switch (type) {
         case 'Resident': return '#34C759';
@@ -29,9 +27,6 @@ function getTypeColor(type: string): string {
     }
 }
 
-/**
- * Format timestamp to readable date/time
- */
 function formatTime(timestamp: any): string {
     if (!timestamp) return 'N/A';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
@@ -39,47 +34,40 @@ function formatTime(timestamp: any): string {
 }
 
 export default function VehiclesIndex() {
-    const breakpoint = useBreakpoint();
+    const [activeTab, setActiveTab] = React.useState<TabType>('inside');
     const [allLogs, setAllLogs] = React.useState<VehicleLog[]>([]);
     const [activeVehicles, setActiveVehicles] = React.useState<VehicleLog[]>([]);
+    const [byHouse, setByHouse] = React.useState<Map<string, VehicleLog[]>>(new Map());
+    const [stats, setStats] = React.useState({ entries: 0, exits: 0, inside: 0 });
     const [loading, setLoading] = React.useState(true);
     const [refreshing, setRefreshing] = React.useState(false);
 
-    /**
-     * Load vehicle logs
-     * Fetches both active vehicles and recent logs in parallel
-     */
-    const loadLogs = async () => {
-        const [all, active] = await Promise.all([
+    const loadData = async () => {
+        const [all, active, grouped, todayStats] = await Promise.all([
             getAllVehicleLogs(),
-            getActiveVehicles()
+            getActiveVehicles(),
+            getLogsByHouse(),
+            getTodayStats()
         ]);
 
-        // Show last 50 logs for performance
-        setAllLogs(all.slice(0, 50));
+        setAllLogs(all.slice(0, 100));
         setActiveVehicles(active);
+        setByHouse(grouped);
+        setStats(todayStats);
     };
 
-    // Load logs on mount
     React.useEffect(() => {
-        loadLogs().then(() => setLoading(false));
+        loadData().then(() => setLoading(false));
     }, []);
 
-    /**
-     * Refresh data when user pulls down
-     */
     const onRefresh = async () => {
         setRefreshing(true);
-        await loadLogs();
+        await loadData();
         setRefreshing(false);
     };
 
-    /**
-     * Render a single vehicle log entry
-     */
-    const renderLog = React.useCallback(({ item: log }: { item: VehicleLog }) => (
-        <Card style={{ ...styles.logCard, marginBottom: spacing.md }}>
-            {/* Header with vehicle number and type */}
+    const renderVehicleCard = React.useCallback((log: VehicleLog, showExit = true) => (
+        <Card key={log.id} style={{ marginBottom: spacing.md }}>
             <View style={styles.logHeader}>
                 <Text style={{ ...styles.vehicleNo, fontSize: fontSize.lg }}>
                     {log.vehicleNo}
@@ -95,36 +83,29 @@ export default function VehiclesIndex() {
                 </View>
             </View>
 
-            {/* Resident info (if applicable) */}
             {log.residentName && (
                 <Text style={[styles.residentInfo, { fontSize: fontSize.sm }]}>
-                    {log.residentName} - {log.houseNo}
+                    🏠 {log.residentName} - House {log.houseNo}
                 </Text>
             )}
 
-            {/* Visitor info (if applicable) */}
             {log.visitorName && (
                 <Text style={[styles.visitorInfo, { fontSize: fontSize.sm }]}>
-                    Visitor: {log.visitorName}
+                    👤 Visitor: {log.visitorName}
                     {log.purpose && `\nPurpose: ${log.purpose}`}
                 </Text>
             )}
 
-            {/* Entry/Exit times */}
             <View style={styles.timeContainer}>
                 <View style={styles.timeRow}>
-                    <Text style={[styles.label, { fontSize: fontSize.xs }]}>
-                        Entry:
-                    </Text>
+                    <Text style={[styles.label, { fontSize: fontSize.xs }]}>📥 Entry:</Text>
                     <Text style={[styles.time, { fontSize: fontSize.xs }]}>
                         {formatTime(log.entryTime)}
                     </Text>
                 </View>
-                {log.exitTime && (
+                {showExit && log.exitTime && (
                     <View style={styles.timeRow}>
-                        <Text style={[styles.label, { fontSize: fontSize.xs }]}>
-                            Exit:
-                        </Text>
+                        <Text style={[styles.label, { fontSize: fontSize.xs }]}>📤 Exit:</Text>
                         <Text style={[styles.time, { fontSize: fontSize.xs }]}>
                             {formatTime(log.exitTime)}
                         </Text>
@@ -132,12 +113,14 @@ export default function VehiclesIndex() {
                 )}
             </View>
 
-            {/* Logged by info */}
             <Text style={[styles.loggedBy, { fontSize: fontSize.xs }]}>
                 Logged by: {log.loggedByName}
             </Text>
         </Card>
     ), []);
+
+    const renderLog = React.useCallback(({ item: log }: { item: VehicleLog }) =>
+        renderVehicleCard(log, true), [renderVehicleCard]);
 
     const keyExtractor = React.useCallback((log: VehicleLog) => log.id || '', []);
 
@@ -147,78 +130,113 @@ export default function VehiclesIndex() {
 
     return (
         <View style={styles.container}>
-            {/* Active Vehicles Section */}
-            <View style={{ ...styles.section, padding: spacing.lg, paddingBottom: spacing.md }}>
-                <Text style={{ ...styles.sectionTitle, fontSize: fontSize.lg, marginBottom: spacing.md }}>
-                    🚗 Currently Inside ({activeVehicles.length})
-                </Text>
-
-                {activeVehicles.length === 0 ? (
-                    <Card>
-                        <Text style={{ ...styles.emptyText, fontSize: fontSize.sm }}>
-                            No vehicles currently inside
-                        </Text>
-                    </Card>
-                ) : (
-                    activeVehicles.map(log => (
-                        <Card key={log.id} style={{ ...styles.logCard, marginBottom: spacing.md }}>
-                            <View style={styles.logHeader}>
-                                <Text style={{ ...styles.vehicleNo, fontSize: fontSize.lg }}>
-                                    {log.vehicleNo}
-                                </Text>
-                                <View style={{
-                                    ...styles.typeBadge,
-                                    backgroundColor: getTypeColor(log.type),
-                                    borderRadius: borderRadius.lg
-                                }}>
-                                    <Text style={{ ...styles.typeText, fontSize: fontSize.xs }}>
-                                        {log.type}
-                                    </Text>
-                                </View>
-                            </View>
-
-                            {log.residentName && (
-                                <Text style={{ ...styles.residentInfo, fontSize: fontSize.sm }}>
-                                    {log.residentName} - {log.houseNo}
-                                </Text>
-                            )}
-
-                            {log.visitorName && (
-                                <Text style={{ ...styles.visitorInfo, fontSize: fontSize.sm }}>
-                                    Visitor: {log.visitorName}
-                                    {log.purpose && `\nPurpose: ${log.purpose}`}
-                                </Text>
-                            )}
-
-                            <Text style={{ ...styles.timeText, fontSize: fontSize.xs }}>
-                                Entry: {formatTime(log.entryTime)}
-                            </Text>
-                        </Card>
-                    ))
-                )}
+            {/* Statistics Header */}
+            <View style={styles.statsContainer}>
+                <View style={styles.statBox}>
+                    <Text style={styles.statNumber}>{stats.entries}</Text>
+                    <Text style={styles.statLabel}>Today's Entries</Text>
+                </View>
+                <View style={styles.statBox}>
+                    <Text style={styles.statNumber}>{stats.exits}</Text>
+                    <Text style={styles.statLabel}>Today's Exits</Text>
+                </View>
+                <View style={[styles.statBox, styles.statBoxActive]}>
+                    <Text style={[styles.statNumber, styles.statNumberActive]}>{stats.inside}</Text>
+                    <Text style={styles.statLabel}>Currently Inside</Text>
+                </View>
             </View>
 
-            {/* Recent Logs Section - Virtualized FlatList for performance */}
-            <View style={{ ...styles.section, flex: 1 }}>
-                <Text style={{ ...styles.sectionTitle, fontSize: fontSize.lg, marginBottom: spacing.md, paddingHorizontal: spacing.lg }}>
-                    📋 Recent Logs (Last 50)
-                </Text>
+            {/* Tab Bar */}
+            <View style={styles.tabBar}>
+                <TouchableOpacity
+                    style={[styles.tab, activeTab === 'inside' && styles.tabActive]}
+                    onPress={() => setActiveTab('inside')}
+                >
+                    <Text style={[styles.tabText, activeTab === 'inside' && styles.tabTextActive]}>
+                        🚗 Inside ({activeVehicles.length})
+                    </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.tab, activeTab === 'logs' && styles.tabActive]}
+                    onPress={() => setActiveTab('logs')}
+                >
+                    <Text style={[styles.tabText, activeTab === 'logs' && styles.tabTextActive]}>
+                        📋 All Logs
+                    </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.tab, activeTab === 'byHouse' && styles.tabActive]}
+                    onPress={() => setActiveTab('byHouse')}
+                >
+                    <Text style={[styles.tabText, activeTab === 'byHouse' && styles.tabTextActive]}>
+                        🏠 By House
+                    </Text>
+                </TouchableOpacity>
+            </View>
 
+            {/* Currently Inside Tab */}
+            {activeTab === 'inside' && (
+                <FlatList
+                    data={activeVehicles}
+                    renderItem={({ item }) => renderVehicleCard(item, false)}
+                    keyExtractor={keyExtractor}
+                    contentContainerStyle={styles.listContent}
+                    refreshControl={
+                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                    }
+                    ListEmptyComponent={
+                        <Card>
+                            <Text style={styles.emptyText}>🅿️ No vehicles currently inside</Text>
+                        </Card>
+                    }
+                />
+            )}
+
+            {/* All Logs Tab */}
+            {activeTab === 'logs' && (
                 <FlatList
                     data={allLogs}
                     renderItem={renderLog}
                     keyExtractor={keyExtractor}
-                    contentContainerStyle={{ paddingHorizontal: spacing.lg }}
+                    contentContainerStyle={styles.listContent}
                     refreshControl={
                         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                     }
-                    // Performance optimizations
                     removeClippedSubviews
                     maxToRenderPerBatch={10}
                     windowSize={10}
-                    initialNumToRender={8}
                 />
-            </View>
+            )}
+
+            {/* By House Tab */}
+            {activeTab === 'byHouse' && (
+                <ScrollView
+                    style={styles.scrollView}
+                    contentContainerStyle={styles.listContent}
+                    refreshControl={
+                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                    }
+                >
+                    {byHouse.size === 0 ? (
+                        <Card>
+                            <Text style={styles.emptyText}>No vehicle logs by house</Text>
+                        </Card>
+                    ) : (
+                        Array.from(byHouse.entries()).map(([house, logs]) => (
+                            <View key={house} style={styles.houseSection}>
+                                <View style={styles.houseHeader}>
+                                    <Text style={styles.houseTitle}>🏠 House {house}</Text>
+                                    <Text style={styles.houseCount}>{logs.length} logs</Text>
+                                </View>
+                                {logs.slice(0, 5).map(log => renderVehicleCard(log, true))}
+                                {logs.length > 5 && (
+                                    <Text style={styles.moreText}>+ {logs.length - 5} more logs</Text>
+                                )}
+                            </View>
+                        ))
+                    )}
+                </ScrollView>
+            )}
         </View>
     );
 }
@@ -228,21 +246,77 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#F5F7FA',
     },
-    section: {
-        // Padding handled inline
+    statsContainer: {
+        flexDirection: 'row',
+        padding: 16,
+        gap: 8,
     },
-    sectionTitle: {
-        fontWeight: '600',
-        color: '#333',
-        // Font size and margin handled inline
+    statBox: {
+        flex: 1,
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 12,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
     },
-    logCard: {
-        // Margin handled inline
+    statBoxActive: {
+        backgroundColor: '#007AFF',
     },
-    emptyText: {
-        color: '#999',
+    statNumber: {
+        fontSize: 24,
+        fontWeight: '700',
+        color: '#007AFF',
+        marginBottom: 4,
+    },
+    statNumberActive: {
+        color: '#fff',
+    },
+    statLabel: {
+        fontSize: 11,
+        color: '#666',
         textAlign: 'center',
-        paddingVertical: 20
+    },
+    tabBar: {
+        flexDirection: 'row',
+        marginHorizontal: 16,
+        marginBottom: 12,
+        backgroundColor: '#E5E5EA',
+        borderRadius: 10,
+        padding: 4,
+    },
+    tab: {
+        flex: 1,
+        paddingVertical: 8,
+        alignItems: 'center',
+        borderRadius: 8,
+    },
+    tabActive: {
+        backgroundColor: '#fff',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
+    },
+    tabText: {
+        fontSize: 12,
+        fontWeight: '500',
+        color: '#666',
+    },
+    tabTextActive: {
+        color: '#007AFF',
+        fontWeight: '600',
+    },
+    scrollView: {
+        flex: 1,
+    },
+    listContent: {
+        padding: 16,
+        paddingTop: 0,
     },
     logHeader: {
         flexDirection: 'row',
@@ -289,13 +363,42 @@ const styles = StyleSheet.create({
     time: {
         color: '#333'
     },
-    timeText: {
-        color: '#666',
-        marginTop: 8
-    },
     loggedBy: {
         color: '#999',
         marginTop: 8,
         fontStyle: 'italic'
-    }
+    },
+    emptyText: {
+        color: '#999',
+        textAlign: 'center',
+        paddingVertical: 20,
+        fontSize: 14,
+    },
+    houseSection: {
+        marginBottom: 24,
+    },
+    houseHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+        paddingBottom: 8,
+        borderBottomWidth: 2,
+        borderBottomColor: '#007AFF',
+    },
+    houseTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#333',
+    },
+    houseCount: {
+        fontSize: 13,
+        color: '#666',
+    },
+    moreText: {
+        textAlign: 'center',
+        color: '#007AFF',
+        fontSize: 13,
+        paddingVertical: 8,
+    },
 });

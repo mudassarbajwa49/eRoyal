@@ -46,7 +46,13 @@ export default function GenerateBillsScreen() {
     };
 
     const handleGenerate = async () => {
-        if (!userProfile) return;
+        console.log('Generate button pressed');
+        console.log('UserProfile:', userProfile);
+
+        if (!userProfile) {
+            Alert.alert('Error', 'User session not found. Please log in again.');
+            return;
+        }
 
         const charges = parseFloat(baseCharges);
         if (isNaN(charges) || charges < 0) {
@@ -54,23 +60,27 @@ export default function GenerateBillsScreen() {
             return;
         }
 
+        console.log('Starting bill generation for month:', month, 'charges:', charges);
         setGenerating(true);
 
         try {
             if (selectedResident === 'all') {
+                console.log('Generating for all residents...');
                 // Generate for all residents
                 const result = await generateMonthlyBills(month, charges, userProfile.uid);
+                console.log('Generation result:', result);
 
                 if (result.success) {
                     const data = result.data as any;
                     const created = data?.billsCreated || 0;
                     const skipped = data?.billsSkipped || 0;
+                    const complaintsProcessed = data?.complaintsProcessed || 0;
 
                     let message = '';
                     if (skipped > 0) {
-                        message = `✅ ${created} bill${created !== 1 ? 's' : ''} created successfully\n⚠️ ${skipped} bill${skipped !== 1 ? 's' : ''} already existed (skipped)\n\nTotal residents: ${created + skipped}`;
+                        message = `✅ ${created} bill${created !== 1 ? 's' : ''} created\n⚠️ ${skipped} already existed (skipped)\n📋 ${complaintsProcessed} complaint charges added`;
                     } else {
-                        message = `✅ ${created} bill${created !== 1 ? 's' : ''} created successfully for ${month}`;
+                        message = `✅ ${created} bill${created !== 1 ? 's' : ''} created for ${month}\n📋 ${complaintsProcessed} complaint charges added`;
                     }
 
                     Alert.alert(
