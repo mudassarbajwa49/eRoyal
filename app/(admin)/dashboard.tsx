@@ -53,7 +53,7 @@ export default function AdminDashboard() {
 
         // Listen to pending marketplace listings
         const listingsUnsub = onSnapshot(
-            query(collection(db, 'marketplaceListings'), where('status', '==', 'Pending')),
+            query(collection(db, 'listings'), where('status', '==', 'Pending')),
             (snapshot) => {
                 setStats(prev => ({ ...prev, pendingListings: snapshot.size }));
             }
