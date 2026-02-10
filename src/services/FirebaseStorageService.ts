@@ -68,3 +68,50 @@ export const uploadImageFromUri = async (
     const blob = await uriToBlob(imageUri);
     return uploadImage(blob, folder);
 };
+
+/**
+ * Upload bill payment proof with user-specific folder structure
+ * Folder: bills/residentId/billId_timestamp
+ */
+export const uploadBillPaymentProof = async (
+    imageUri: string,
+    residentId: string,
+    billId: string
+): Promise<{ url: string; fileName: string }> => {
+    const blob = await uriToBlob(imageUri);
+    const timestamp = Date.now();
+    const folder = `bills/${residentId}/${billId}_${timestamp}`;
+    return uploadImage(blob, folder);
+};
+
+/**
+ * Upload vehicle image with user-specific folder structure
+ * Folder: vehicles/residentId/vehicleId_timestamp
+ */
+export const uploadVehicleImage = async (
+    imageUri: string,
+    residentId: string,
+    vehicleId: string
+): Promise<{ url: string; fileName: string }> => {
+    const blob = await uriToBlob(imageUri);
+    const timestamp = Date.now();
+    const folder = `vehicles/${residentId}/${vehicleId}_${timestamp}`;
+    return uploadImage(blob, folder);
+};
+
+/**
+ * Upload complaint image with user-specific folder structure
+ * Folder: complaints/residentId/complaintId_index_timestamp
+ */
+export const uploadComplaintImage = async (
+    imageUri: string,
+    residentId: string,
+    complaintId: string,
+    index: number = 0
+): Promise<{ url: string; fileName: string }> => {
+    const blob = await uriToBlob(imageUri);
+    const timestamp = Date.now();
+    const folder = `complaints/${residentId}/${complaintId}_${index}_${timestamp}`;
+    return uploadImage(blob, folder);
+};
+
