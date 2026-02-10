@@ -34,26 +34,39 @@ try {
 }
 
 /**
- * Set admin role for a user
+ * Set role custom claim for a user
  */
-async function setAdminClaim(email) {
+async function setRole(email, role = 'admin') {
     try {
+        // Valid roles
+        const validRoles = ['admin', 'resident', 'security'];
+        if (!validRoles.includes(role.toLowerCase())) {
+            console.error(`❌ Invalid role: ${role}`);
+            console.error(`   Valid roles: ${validRoles.join(', ')}`);
+            return false;
+        }
+
         // Get user by email
         const user = await admin.auth().getUserByEmail(email);
 
         // Set custom claim
-        await admin.auth().setCustomUserClaims(user.uid, { role: 'admin' });
+        await admin.auth().setCustomUserClaims(user.uid, { role: role.toLowerCase() });
 
-        console.log(`✅ Admin claim set for ${email}`);
+        console.log(`✅ Role '${role}' set for ${email}`);
         console.log(`   User ID: ${user.uid}`);
         console.log('   The user needs to sign out and sign in again for changes to take effect');
 
         return true;
     } catch (error) {
-        console.error(`❌ Error setting admin claim for ${email}:`);
+        console.error(`❌ Error setting role for ${email}:`);
         console.error(`   ${error.message}`);
         return false;
     }
+}
+
+// Keep backward compatibility
+async function setAdminClaim(email) {
+    return setRole(email, 'admin');
 }
 
 /**
@@ -186,6 +199,8 @@ Commands:
 
 Examples:
   node scripts/setAdminClaim.js set admin@example.com
+  node scripts/setAdminClaim.js set user@example.com resident
+  node scripts/setAdminClaim.js set security@example.com security
   node scripts/setAdminClaim.js remove user@example.com
   node scripts/setAdminClaim.js list
   node scripts/setAdminClaim.js listall
@@ -200,10 +215,12 @@ Note: Users must sign out and sign in for custom claims to take effect.
         case 'set':
             if (!args[1]) {
                 console.error('❌ Error: Email required');
-                console.log('Usage: node scripts/setAdminClaim.js set <email>');
+                console.log('Usage: node scripts/setAdminClaim.js set <email> [role]');
+                console.log('   Roles: admin (default), resident, security');
                 process.exit(1);
             }
-            await setAdminClaim(args[1]);
+            const role = args[2] || 'admin';
+            await setRole(args[1], role);
             break;
 
         case 'remove':

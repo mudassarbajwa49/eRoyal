@@ -99,6 +99,17 @@ export default function CreateListingScreen() {
         setLoading(false);
 
         if (result.success) {
+            // Clear form
+            setFormData({
+                type: 'Rent',
+                price: '',
+                size: '',
+                location: '',
+                contact: '',
+                description: ''
+            });
+            setSelectedImages([]);
+
             Alert.alert(
                 'Success',
                 'Listing submitted for admin approval. You will be notified once approved.',

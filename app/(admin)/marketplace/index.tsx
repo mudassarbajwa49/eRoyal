@@ -35,6 +35,11 @@ export default function MarketplaceIndex() {
             getPendingListings(),
             getApprovedListings()
         ]);
+        console.log('📋 Loaded listings:', {
+            pending: pending.length,
+            approved: approved.length
+        });
+        console.log('✅ Approved listings:', approved);
         setPendingListings(pending);
         setApprovedListings(approved);
         setLoading(false);
@@ -70,33 +75,27 @@ export default function MarketplaceIndex() {
     };
 
     const handleReject = async (listingId: string) => {
-        Alert.prompt(
-            'Reject Listing',
-            'Please provide a reason for rejection:',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Reject',
-                    style: 'destructive',
-                    onPress: async (reason?: string) => {
-                        if (!reason || !reason.trim()) {
-                            Alert.alert('Error', 'Please provide a rejection reason');
-                            return;
-                        }
+        // Use native prompt for web compatibility (Alert.prompt is iOS-only)
+        const reason = prompt('Please provide a reason for rejection:');
 
-                        const result = await rejectListing(listingId, userProfile!.uid, reason);
+        if (reason === null) {
+            // User cancelled
+            return;
+        }
 
-                        if (result.success) {
-                            Alert.alert('Rejected', 'Listing has been rejected');
-                            loadListings();
-                        } else {
-                            Alert.alert('Error', result.error || 'Failed to reject listing');
-                        }
-                    }
-                }
-            ],
-            'plain-text'
-        );
+        if (!reason || !reason.trim()) {
+            Alert.alert('Error', 'Please provide a rejection reason');
+            return;
+        }
+
+        const result = await rejectListing(listingId, userProfile!.uid, reason);
+
+        if (result.success) {
+            Alert.alert('Rejected', 'Listing has been rejected');
+            loadListings();
+        } else {
+            Alert.alert('Error', result.error || 'Failed to reject listing');
+        }
     };
 
     if (loading) {
