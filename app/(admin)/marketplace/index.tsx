@@ -12,6 +12,7 @@ import {
     approveListing,
     getApprovedListings,
     getPendingListings,
+    getRejectedListings,
     rejectListing
 } from '../../../src/services/MarketplaceListingService';
 import { Listing } from '../../../src/types';
@@ -21,9 +22,10 @@ export default function MarketplaceIndex() {
     const { userProfile } = useAuth();
     const [pendingListings, setPendingListings] = useState<Listing[]>([]);
     const [approvedListings, setApprovedListings] = useState<Listing[]>([]);
+    const [rejectedListings, setRejectedListings] = useState<Listing[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [activeTab, setActiveTab] = useState<'pending' | 'approved'>('pending');
+    const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
 
     useEffect(() => {
         loadListings();
@@ -31,17 +33,20 @@ export default function MarketplaceIndex() {
 
     const loadListings = async () => {
         setLoading(true);
-        const [pending, approved] = await Promise.all([
+        const [pending, approved, rejected] = await Promise.all([
             getPendingListings(),
-            getApprovedListings()
+            getApprovedListings(),
+            getRejectedListings()
         ]);
         console.log('📋 Loaded listings:', {
             pending: pending.length,
-            approved: approved.length
+            approved: approved.length,
+            rejected: rejected.length
         });
         console.log('✅ Approved listings:', approved);
         setPendingListings(pending);
         setApprovedListings(approved);
+        setRejectedListings(rejected);
         setLoading(false);
     };
 
@@ -52,26 +57,27 @@ export default function MarketplaceIndex() {
     };
 
     const handleApprove = async (listingId: string) => {
-        Alert.alert(
-            'Approve Listing',
-            'Are you sure you want to approve this property listing?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Approve',
-                    onPress: async () => {
-                        const result = await approveListing(listingId, userProfile!.uid);
+        console.log('🔵 Approve button clicked for listing:', listingId);
 
-                        if (result.success) {
-                            Alert.alert('Success', 'Listing approved successfully');
-                            loadListings();
-                        } else {
-                            Alert.alert('Error', result.error || 'Failed to approve listing');
-                        }
-                    }
-                }
-            ]
-        );
+        // Use window.confirm for web compatibility (Alert.alert doesn't work on web)
+        const confirmed = window.confirm('Are you sure you want to approve this property listing?');
+
+        if (!confirmed) {
+            console.log('❌ Approval cancelled');
+            return;
+        }
+
+        console.log('✅ Approve confirmed, calling approveListing...');
+        const result = await approveListing(listingId, userProfile!.uid);
+
+        console.log('📋 Approve result:', result);
+
+        if (result.success) {
+            Alert.alert('Success', 'Listing approved successfully');
+            loadListings();
+        } else {
+            Alert.alert('Error', result.error || 'Failed to approve listing');
+        }
     };
 
     const handleReject = async (listingId: string) => {
@@ -122,6 +128,14 @@ export default function MarketplaceIndex() {
                         Approved ({approvedListings.length})
                     </Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.tab, activeTab === 'rejected' && styles.activeTab]}
+                    onPress={() => setActiveTab('rejected')}
+                >
+                    <Text style={[styles.tabText, activeTab === 'rejected' && styles.activeTabText]}>
+                        Rejected ({rejectedListings.length})
+                    </Text>
+                </TouchableOpacity>
             </View>
 
             {/* Content */}
@@ -146,7 +160,7 @@ export default function MarketplaceIndex() {
                             />
                         ))
                     )
-                ) : (
+                ) : activeTab === 'approved' ? (
                     approvedListings.length === 0 ? (
                         <View style={styles.emptyState}>
                             <Text style={styles.emptyIcon}>🏘️</Text>
@@ -154,6 +168,21 @@ export default function MarketplaceIndex() {
                         </View>
                     ) : (
                         approvedListings.map(listing => (
+                            <ListingCard
+                                key={listing.id}
+                                listing={listing}
+                                isAdmin
+                            />
+                        ))
+                    )
+                ) : (
+                    rejectedListings.length === 0 ? (
+                        <View style={styles.emptyState}>
+                            <Text style={styles.emptyIcon}>❌</Text>
+                            <Text style={styles.emptyText}>No rejected listings</Text>
+                        </View>
+                    ) : (
+                        rejectedListings.map(listing => (
                             <ListingCard
                                 key={listing.id}
                                 listing={listing}

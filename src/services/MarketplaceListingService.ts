@@ -118,6 +118,28 @@ export const getApprovedListings = async (): Promise<Listing[]> => {
 };
 
 /**
+ * Get rejected listings (Admin only)
+ */
+export const getRejectedListings = async (): Promise<Listing[]> => {
+    try {
+        const listingsQuery = query(
+            collection(db, 'listings'),
+            where('status', '==', 'Rejected'),
+            orderBy('createdAt', 'desc')
+        );
+
+        const snapshot = await getDocs(listingsQuery);
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as Listing));
+    } catch (error) {
+        console.error('Error fetching rejected listings:', error);
+        return [];
+    }
+};
+
+/**
  * Get pending listings (Admin only)
  */
 export const getPendingListings = async (): Promise<Listing[]> => {
