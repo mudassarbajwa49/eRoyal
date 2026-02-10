@@ -110,6 +110,39 @@ async function listAdmins() {
 }
 
 /**
+ * List all users in Firebase Authentication
+ */
+async function listAllUsers() {
+    try {
+        const listUsersResult = await admin.auth().listUsers(1000);
+        const users = listUsersResult.users;
+
+        if (users.length === 0) {
+            console.log('No users found');
+            return;
+        }
+
+        console.log(`\n👥 All Registered Users (${users.length}):\n`);
+        users.forEach((user, index) => {
+            const role = user.customClaims?.role || 'resident';
+            const roleEmoji = role === 'admin' ? '👑' : '👤';
+
+            console.log(`${index + 1}. ${roleEmoji} ${user.email || 'No email'}`);
+            console.log(`   UID: ${user.uid}`);
+            console.log(`   Role: ${role}`);
+            console.log(`   Created: ${user.metadata.creationTime}`);
+            console.log('');
+        });
+
+        return users;
+    } catch (error) {
+        console.error('❌ Error listing users:', error.message);
+        return [];
+    }
+}
+
+
+/**
  * Set multiple admins at once
  */
 async function setMultipleAdmins(emails) {
@@ -148,12 +181,14 @@ Commands:
   set <email>              Set admin claim for user
   remove <email>           Remove admin claim from user
   list                     List all admin users
+  listall                  List ALL registered users (with roles)
   bulk <email1,email2,...> Set admin claims for multiple users
 
 Examples:
   node scripts/setAdminClaim.js set admin@example.com
   node scripts/setAdminClaim.js remove user@example.com
   node scripts/setAdminClaim.js list
+  node scripts/setAdminClaim.js listall
   node scripts/setAdminClaim.js bulk admin1@test.com,admin2@test.com
 
 Note: Users must sign out and sign in for custom claims to take effect.
@@ -182,6 +217,10 @@ Note: Users must sign out and sign in for custom claims to take effect.
 
         case 'list':
             await listAdmins();
+            break;
+
+        case 'listall':
+            await listAllUsers();
             break;
 
         case 'bulk':
