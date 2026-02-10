@@ -17,6 +17,7 @@ export default function AdminLayout() {
     return (
         <Stack
             screenOptions={{
+                headerShown: true,
                 headerStyle: {
                     backgroundColor: '#007AFF'
                 },
@@ -52,16 +53,36 @@ export default function AdminLayout() {
                 options={{ title: 'Create Bill' }}
             />
             <Stack.Screen
-                name="bills/verify"
-                options={{ title: 'Verify Payments' }}
+                name="bills/generate"
+                options={{ title: 'Generate Bills' }}
+            />
+            <Stack.Screen
+                name="bills/[id]"
+                options={{ title: 'Bill Details' }}
             />
             <Stack.Screen
                 name="complaints/index"
                 options={{ title: 'Complaints' }}
             />
             <Stack.Screen
+                name="complaints/[id]"
+                options={{ title: 'Complaint Details' }}
+            />
+            <Stack.Screen
+                name="complaints/create"
+                options={{ title: 'Create Complaint' }}
+            />
+            <Stack.Screen
                 name="marketplace/index"
                 options={{ title: 'Marketplace Management' }}
+            />
+            <Stack.Screen
+                name="marketplace/create"
+                options={{ title: 'Create Listing' }}
+            />
+            <Stack.Screen
+                name="announcements/create"
+                options={{ title: 'Create Announcement' }}
             />
             <Stack.Screen
                 name="vehicles/index"

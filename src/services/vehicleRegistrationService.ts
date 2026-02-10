@@ -92,18 +92,24 @@ export const registerVehicle = async (
             imageUrl = uploadResult.url;
         }
 
-        // Create vehicle document
-        const vehicleData: Omit<RegisteredVehicle, 'id'> = {
+        // Create vehicle document - only include fields that have values
+        const vehicleData: any = {
             vehicleNo: normalizedVehicleNo,
             type,
-            color,
-            imageUrl,
             residentId,
             residentName,
             houseNo,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
         };
+
+        // Only add optional fields if they have values (Firestore rejects undefined)
+        if (color) {
+            vehicleData.color = color;
+        }
+        if (imageUrl) {
+            vehicleData.imageUrl = imageUrl;
+        }
 
         const docRef = await addDoc(collection(db, 'registeredVehicles'), vehicleData);
 
@@ -271,5 +277,34 @@ export const getAllRegisteredVehicles = async (): Promise<RegisteredVehicle[]> =
     } catch (error) {
         console.error('Error fetching all vehicles:', error);
         return [];
+    }
+};
+
+/**
+ * Lookup vehicle by number (for security verification)
+ */
+export const lookupVehicleByNumber = async (vehicleNo: string): Promise<RegisteredVehicle | null> => {
+    try {
+        const normalizedNo = normalizeVehicleNumber(vehicleNo);
+
+        if (!normalizedNo) return null;
+
+        const q = query(
+            collection(db, 'registeredVehicles'),
+            where('vehicleNo', '==', normalizedNo)
+        );
+
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) return null;
+
+        const doc = querySnapshot.docs[0];
+        return {
+            id: doc.id,
+            ...doc.data(),
+        } as RegisteredVehicle;
+    } catch (error) {
+        console.error('Error looking up vehicle:', error);
+        return null;
     }
 };

@@ -9,15 +9,14 @@
  */
 
 import { useRouter } from 'expo-router';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { db } from '../../firebaseConfig';
 import { Card } from '../../src/components/common/Card';
 import { LoadingSpinner } from '../../src/components/common/LoadingSpinner';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useBreakpoint } from '../../src/hooks/useResponsive';
-import { getPendingComplaints } from '../../src/services/ComplaintManagementService';
-import { getPendingListings } from '../../src/services/MarketplaceListingService';
-import { getPendingBills } from '../../src/services/MonthlyBillingService';
 import { borderRadius, fontSize, spacing } from '../../src/utils/responsive';
 
 export default function AdminDashboard() {
@@ -25,25 +24,7 @@ export default function AdminDashboard() {
     const router = useRouter();
     const breakpoint = useBreakpoint();
 
-    /**
-     * Load dashboard statistics
-     * This fetches pending items from different services in parallel for speed
-     */
-    const loadStats = async () => {
-        const [bills, complaints, listings] = await Promise.all([
-            getPendingBills(),
-            getPendingComplaints(),
-            getPendingListings()
-        ]);
-
-        return {
-            pendingBills: bills.length,
-            pendingComplaints: complaints.length,
-            pendingListings: listings.length
-        };
-    };
-
-    // Fetch stats on component mount (with caching for performance)
+    // Real-time dashboard statistics
     const [stats, setStats] = React.useState({
         pendingBills: 0,
         pendingComplaints: 0,
@@ -51,11 +32,39 @@ export default function AdminDashboard() {
     });
     const [loading, setLoading] = React.useState(true);
 
+    // Set up real-time listeners for all stats
     React.useEffect(() => {
-        loadStats().then(data => {
-            setStats(data);
-            setLoading(false);
-        });
+        // Listen to unpaid bills
+        const billsUnsub = onSnapshot(
+            query(collection(db, 'bills'), where('status', '==', 'Unpaid')),
+            (snapshot) => {
+                setStats(prev => ({ ...prev, pendingBills: snapshot.size }));
+                setLoading(false);
+            }
+        );
+
+        // Listen to pending complaints
+        const complaintsUnsub = onSnapshot(
+            query(collection(db, 'complaints'), where('status', '==', 'Pending')),
+            (snapshot) => {
+                setStats(prev => ({ ...prev, pendingComplaints: snapshot.size }));
+            }
+        );
+
+        // Listen to pending marketplace listings
+        const listingsUnsub = onSnapshot(
+            query(collection(db, 'marketplaceListings'), where('status', '==', 'Pending')),
+            (snapshot) => {
+                setStats(prev => ({ ...prev, pendingListings: snapshot.size }));
+            }
+        );
+
+        // Cleanup listeners on unmount
+        return () => {
+            billsUnsub();
+            complaintsUnsub();
+            listingsUnsub();
+        };
     }, []);
 
     // Menu item configuration

@@ -8,12 +8,14 @@ import { Button } from '../../../src/components/common/Button';
 import { Card } from '../../../src/components/common/Card';
 import { LoadingSpinner } from '../../../src/components/common/LoadingSpinner';
 import { StatusBadge } from '../../../src/components/common/StatusBadge';
+import { useAuth } from '../../../src/contexts/AuthContext';
 import { getBillById } from '../../../src/services/MonthlyBillingService';
 import { Bill } from '../../../src/types';
 
 export default function AdminBillDetailScreen() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
+    const { userProfile } = useAuth();
     const [bill, setBill] = useState<Bill | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -30,21 +32,37 @@ export default function AdminBillDetailScreen() {
         setLoading(false);
     };
 
-    const handleSendBill = () => {
-        Alert.alert(
-            'Send Bill',
-            `Send notification to ${bill?.residentName} about this bill?`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Send',
-                    onPress: () => {
-                        // TODO: Implement notification sending
-                        Alert.alert('Success', 'Bill notification sent!');
-                    }
+    const handleSendBill = async () => {
+        console.log('Send Bill clicked');
+        console.log('Bill:', bill);
+        console.log('UserProfile:', userProfile);
+
+        if (!bill?.id) {
+            window.alert('Error: Bill not found');
+            return;
+        }
+
+        if (!userProfile?.uid) {
+            window.alert('Error: User session not found. Please log in again.');
+            return;
+        }
+
+        const confirmed = window.confirm(`Send notification to ${bill?.residentName} about this bill?`);
+        if (confirmed) {
+            try {
+                const { sendBillToResident } = await import('../../../src/services/MonthlyBillingService');
+                const result = await sendBillToResident(bill.id!, userProfile.uid);
+                if (result.success) {
+                    window.alert('Success: Bill sent to resident!');
+                    loadBill();
+                } else {
+                    window.alert('Error: ' + (result.error || 'Failed to send bill'));
                 }
-            ]
-        );
+            } catch (error) {
+                console.error('Error sending bill:', error);
+                window.alert('Error: An unexpected error occurred');
+            }
+        }
     };
 
     const formatDate = (timestamp: any): string => {
