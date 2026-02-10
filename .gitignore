@@ -45,5 +45,6 @@ app-example
 
 # Firebase sensitive files
 serviceAccountKey.json
+service-account-key.json
 functions/.env
 

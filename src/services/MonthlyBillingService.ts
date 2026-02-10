@@ -696,19 +696,48 @@ export const verifyPayment = async (
 
 /**
  * Upload payment proof (Resident)
+ * Uploads image to secure folder structure and updates bill
  */
 export const uploadPaymentProof = async (
     billId: string,
-    proofUrl: string
+    imageUri: string
 ): Promise<ApiResponse> => {
     try {
-        const billRef = doc(db, 'bills', billId);
+        // First get the bill to extract residentId
+        const { getDoc } = await import('firebase/firestore');
+        const billDoc = await getDoc(doc(db, 'bills', billId));
 
+        if (!billDoc.exists()) {
+            return {
+                success: false,
+                error: 'Bill not found',
+            };
+        }
+
+        const billData = billDoc.data() as Bill;
+        const residentId = billData.residentId;
+
+        if (!residentId) {
+            return {
+                success: false,
+                error: 'Invalid bill - missing resident information',
+            };
+        }
+
+        // Upload image to secure user-specific folder
+        const { uploadBillPaymentProof } = await import('./FirebaseStorageService');
+        const uploadResult = await uploadBillPaymentProof(imageUri, residentId, billId);
+
+        // Update bill with proof URL
+        const billRef = doc(db, 'bills', billId);
         await updateDoc(billRef, {
-            proofUrl,
+            proofUrl: uploadResult.url,
             proofUploadedAt: serverTimestamp(),
             status: 'Pending' as BillStatus,
         });
+
+        // Invalidate cache
+        dataCache.invalidateAllBills();
 
         return {
             success: true,
