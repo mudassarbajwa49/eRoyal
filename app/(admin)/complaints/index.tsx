@@ -1,20 +1,15 @@
 /**
  * Admin Complaints Management
  * View and manage all resident complaints
- * 
- * This screen shows:
- * - All complaints with real-time updates
- * - Filter by status (All, Pending, In Progress, Resolved)
- * - Tap complaint to view/edit details  
+ *
+ * Reads live data from AdminDataContext — no Firestore listener created here.
  */
 
 import { useRouter } from 'expo-router';
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import React, { useCallback, useMemo } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { db } from '../../../firebaseConfig';
-import { LoadingSpinner } from '../../../src/components/common/LoadingSpinner';
 import { ComplaintCard } from '../../../src/components/complaints/ComplaintCard';
+import { useAdminData } from '../../../src/contexts/AdminDataContext';
 import { useBreakpoint } from '../../../src/hooks/useResponsive';
 import { Complaint } from '../../../src/types';
 import { fontSize, spacing } from '../../../src/utils/responsive';
@@ -22,59 +17,17 @@ import { fontSize, spacing } from '../../../src/utils/responsive';
 export default function ComplaintsIndex() {
     const router = useRouter();
     const breakpoint = useBreakpoint();
-    const [complaints, setComplaints] = React.useState<Complaint[]>([]);
-    const [loading, setLoading] = React.useState(true);
+    const { complaints, refresh } = useAdminData();
+
     const [refreshing, setRefreshing] = React.useState(false);
     const [statusFilter, setStatusFilter] = React.useState<'all' | 'Pending' | 'In Progress' | 'Resolved'>('all');
 
-    /**
-     * Set up real-time listener for complaints
-     * Updates automatically when complaints are created/updated
-     */
-    React.useEffect(() => {
-        console.log('🔄 Setting up real-time listener for all complaints');
-
-        const q = query(collection(db, 'complaints'), orderBy('createdAt', 'desc'));
-
-        const unsubscribe = onSnapshot(
-            q,
-            (snapshot) => {
-                const complaintsData: Complaint[] = [];
-                snapshot.forEach((doc) => {
-                    complaintsData.push({
-                        id: doc.id,
-                        ...doc.data(),
-                    } as Complaint);
-                });
-                console.log(`✅ Complaints updated: ${complaintsData.length} complaints`);
-                setComplaints(complaintsData);
-                setLoading(false);
-            },
-            (error) => {
-                console.error('❌ Error listening to complaints:', error);
-                setLoading(false);
-            }
-        );
-
-        return () => {
-            console.log('🧹 Cleaning up complaints listener');
-            unsubscribe();
-        };
-    }, []);
-
-    /**
-     * Handle pull-to-refresh
-     * Data updates automatically via real-time listener
-     */
     const onRefresh = async () => {
         setRefreshing(true);
-        // Just show animation - data refreshes automatically
+        refresh(); // no-op — data refreshes automatically via onSnapshot
         setTimeout(() => setRefreshing(false), 500);
     };
 
-    /**
-     * Navigate to complaint detail screen
-     */
     const handleComplaintPress = useCallback((complaint: Complaint) => {
         router.push(`/(admin)/complaints/${complaint.id}` as any);
     }, [router]);
@@ -85,7 +38,7 @@ export default function ComplaintsIndex() {
         return complaints.filter(c => c.status === statusFilter);
     }, [complaints, statusFilter]);
 
-    // Count complaints by status  (memoized for tab badges)
+    // Count complaints by status (memoized for tab badges)
     const counts = useMemo(() => ({
         all: complaints.length,
         pending: complaints.filter(c => c.status === 'Pending').length,
@@ -93,10 +46,6 @@ export default function ComplaintsIndex() {
         resolved: complaints.filter(c => c.status === 'Resolved').length,
     }), [complaints]);
 
-    /**
-     * Render a single complaint card
-     * Memoized to prevent unnecessary re-renders
-     */
     const renderComplaint = useCallback(({ item }: { item: Complaint }) => (
         <ComplaintCard
             complaint={item}
@@ -107,9 +56,6 @@ export default function ComplaintsIndex() {
 
     const keyExtractor = useCallback((item: Complaint) => item.id || '', []);
 
-    if (loading) {
-        return <LoadingSpinner message="Loading complaints..." />;
-    }
 
     return (
         <>
@@ -178,7 +124,7 @@ export default function ComplaintsIndex() {
                 </TouchableOpacity>
             </View>
 
-            {/* Complaints List - Now using FlatList for virtualization */}
+            {/* Complaints List */}
             <FlatList
                 data={filteredComplaints}
                 renderItem={renderComplaint}
@@ -195,7 +141,6 @@ export default function ComplaintsIndex() {
                         </Text>
                     </View>
                 }
-                // Performance optimizations
                 removeClippedSubviews
                 maxToRenderPerBatch={10}
                 windowSize={10}

@@ -77,6 +77,20 @@
             ]
         },
         {
+            "collectionGroup": "bills",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "residentId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "month",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
             "collectionGroup": "complaints",
             "queryScope": "COLLECTION",
             "fields": [
@@ -202,6 +216,46 @@
                 },
                 {
                     "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "bills",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "status",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "isArchived",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "month",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "bills",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "residentId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "status",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "isArchived",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "month",
                     "order": "DESCENDING"
                 }
             ]

@@ -1,15 +1,13 @@
 // Admin Bills Index
-// View and manage all bills
+// View and manage all bills — reads live data from AdminDataContext
 
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BillCard } from '../../../src/components/bills/BillCard';
 import { Button } from '../../../src/components/common/Button';
-import { LoadingSpinner } from '../../../src/components/common/LoadingSpinner';
-import { useAuth } from '../../../src/contexts/AuthContext';
+import { useAdminData } from '../../../src/contexts/AdminDataContext';
 import { useBreakpoint } from '../../../src/hooks/useResponsive';
-import { getAllBills } from '../../../src/services/MonthlyBillingService';
 import { Bill } from '../../../src/types';
 import { fontSize, spacing } from '../../../src/utils/responsive';
 
@@ -18,29 +16,16 @@ const MemoizedBillCard = React.memo(BillCard);
 
 export default function BillsIndex() {
     const router = useRouter();
-    const { userProfile } = useAuth();
     const breakpoint = useBreakpoint();
-    const [bills, setBills] = useState<Bill[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { bills, refresh } = useAdminData();
+
     const [refreshing, setRefreshing] = useState(false);
-    const [generating, setGenerating] = useState(false);
     const [filter, setFilter] = useState<'all' | 'unpaid' | 'pending' | 'paid'>('all');
-
-    useEffect(() => {
-        loadBills();
-    }, []);
-
-    const loadBills = async (forceRefresh = false) => {
-        setLoading(true);
-        const result = await getAllBills(true, forceRefresh);
-        setBills(result);
-        setLoading(false);
-    };
 
     const onRefresh = async () => {
         setRefreshing(true);
-        await loadBills(true); // Force refresh to bypass cache
-        setRefreshing(false);
+        refresh(); // no-op — data refreshes automatically via onSnapshot
+        setTimeout(() => setRefreshing(false), 500);
     };
 
     // Memoize filtered bills
@@ -69,7 +54,6 @@ export default function BillsIndex() {
         router.push('/(admin)/bills/verify' as any);
     }, [router]);
 
-    // Memoize render function
     const renderBill = useCallback(({ item }: { item: Bill }) => (
         <MemoizedBillCard
             key={item.id}
@@ -81,16 +65,12 @@ export default function BillsIndex() {
 
     const keyExtractor = useCallback((item: Bill) => item.id!, []);
 
-    // Optimize FlatList with getItemLayout
-    const getItemLayout = useCallback((data: any, index: number) => ({
-        length: 180, // Approximate height of BillCard
+    const getItemLayout = useCallback((_data: any, index: number) => ({
+        length: 180,
         offset: 180 * index,
         index,
     }), []);
 
-    if (loading) {
-        return <LoadingSpinner message="Loading bills..." />;
-    }
 
     return (
         <View style={styles.container}>
@@ -99,7 +79,6 @@ export default function BillsIndex() {
                 <Button
                     title="Generate Monthly Bills"
                     onPress={handleGenerateBills}
-                    loading={generating}
                     variant="primary"
                     style={styles.generateButton}
                 />
@@ -163,7 +142,7 @@ export default function BillsIndex() {
                 </TouchableOpacity>
             </View>
 
-            {/* Bills List - Now using FlatList for virtualization */}
+            {/* Bills List */}
             <FlatList
                 data={filteredBills}
                 renderItem={renderBill}

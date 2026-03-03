@@ -1,32 +1,22 @@
 // Announcements List Screen (Resident)
 // Modern announcement cards with priority indicators
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { BorderRadius, Colors, Spacing, Typography } from '../../../constants/designSystem';
 import { Card } from '../../../src/components/common/Card';
 import { SkeletonLoader } from '../../../src/components/common/SkeletonLoader';
-import { Announcement, getAnnouncements } from '../../../src/services/announcementService';
+import { useAppData } from '../../../src/contexts/AppDataContext';
+import { Announcement } from '../../../src/services/announcementService';
 
 export default function AnnouncementListScreen() {
-    const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { announcements, initializing } = useAppData();
     const [refreshing, setRefreshing] = useState(false);
 
-    useEffect(() => {
-        loadAnnouncements();
-    }, []);
-
-    const loadAnnouncements = async () => {
-        const data = await getAnnouncements();
-        setAnnouncements(data);
-        setLoading(false);
-    };
-
+    // onSnapshot keeps data live — pull-to-refresh is cosmetic feedback only
     const onRefresh = async () => {
         setRefreshing(true);
-        await loadAnnouncements();
-        setRefreshing(false);
+        setTimeout(() => setRefreshing(false), 500);
     };
 
     const getPriorityColor = (priority: string) => {
@@ -87,7 +77,7 @@ export default function AnnouncementListScreen() {
         </Card>
     );
 
-    if (loading) {
+    if (initializing) {
         return (
             <View style={styles.container}>
                 <View style={styles.listContent}>

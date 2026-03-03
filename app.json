@@ -9,7 +9,10 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "eRoyal uses the camera to scan vehicle license plates at the security gate."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -27,6 +30,12 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "eRoyal uses the camera to scan vehicle license plates at the security gate."
+        }
+      ],
       [
         "expo-splash-screen",
         {

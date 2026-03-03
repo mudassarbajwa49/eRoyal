@@ -179,53 +179,62 @@ export default function UsersIndex() {
      * Memoized to prevent unnecessary re-renders
      */
     const renderItem = useCallback(({ item }: { item: UserProfile }) => (
-        <Card style={{ ...styles.userCard, marginBottom: spacing.md, padding: spacing.md }}>
-            <View style={styles.userInfo}>
-                {/* Avatar with first letter */}
-                <View style={{
-                    ...styles.avatarContainer,
-                    backgroundColor: activeTab === 'resident' ? '#E8F5E9' : '#FFF3E0',
-                    borderRadius: borderRadius.full,
-                    marginRight: spacing.md
-                }}>
-                    <Text style={{
-                        ...styles.avatarText,
-                        color: activeTab === 'resident' ? '#2E7D32' : '#EF6C00',
-                        fontSize: fontSize.xl
+        <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={() => router.push(`/(admin)/users/${item.uid}` as any)}
+            style={{ marginBottom: spacing.md }}
+        >
+            <Card style={{ ...styles.userCard, padding: spacing.md }}>
+                <View style={styles.userInfo}>
+                    {/* Avatar with first letter */}
+                    <View style={{
+                        ...styles.avatarContainer,
+                        backgroundColor: activeTab === 'resident' ? '#E8F5E9' : '#FFF3E0',
+                        borderRadius: borderRadius.full,
+                        marginRight: spacing.md
                     }}>
-                        {item.name.charAt(0).toUpperCase()}
-                    </Text>
-                </View>
-
-                {/* User details */}
-                <View style={styles.userDetails}>
-                    <Text style={{ ...styles.userName, fontSize: fontSize.base }}>
-                        {item.name}
-                    </Text>
-                    <Text style={{ ...styles.userEmail, fontSize: fontSize.sm }}>
-                        {item.email}
-                    </Text>
-                    {item.role === 'resident' && item.houseNo && (
-                        <Text style={{ ...styles.userMeta, fontSize: fontSize.xs }}>
-                            House: {item.houseNo}
+                        <Text style={{
+                            ...styles.avatarText,
+                            color: activeTab === 'resident' ? '#2E7D32' : '#EF6C00',
+                            fontSize: fontSize.xl
+                        }}>
+                            {item.name.charAt(0).toUpperCase()}
                         </Text>
-                    )}
-                    {item.role === 'security' && (
-                        <Text style={{ ...styles.userMeta, fontSize: fontSize.xs }}>
-                            Security Personnel
-                        </Text>
-                    )}
-                </View>
+                    </View>
 
-                {/* Delete button */}
-                <TouchableOpacity
-                    style={{ ...styles.deleteButton, borderRadius: borderRadius.md, padding: spacing.sm }}
-                    onPress={() => handleDeleteUser(item)}
-                >
-                    <Text style={styles.deleteButtonText}>🗑️</Text>
-                </TouchableOpacity>
-            </View>
-        </Card>
+                    {/* User details */}
+                    <View style={styles.userDetails}>
+                        <Text style={{ ...styles.userName, fontSize: fontSize.base }}>
+                            {item.name}
+                        </Text>
+                        <Text style={{ ...styles.userEmail, fontSize: fontSize.sm }}>
+                            {item.email}
+                        </Text>
+                        {item.role === 'resident' && item.houseNo && (
+                            <Text style={{ ...styles.userMeta, fontSize: fontSize.xs }}>
+                                🏠 House: {item.houseNo}
+                            </Text>
+                        )}
+                        {item.role === 'security' && (
+                            <Text style={{ ...styles.userMeta, fontSize: fontSize.xs }}>
+                                Security Personnel
+                            </Text>
+                        )}
+                    </View>
+
+                    {/* Delete button — stops propagation so tap on bin doesn't open detail */}
+                    <TouchableOpacity
+                        style={{ ...styles.deleteButton, borderRadius: borderRadius.md, padding: spacing.sm }}
+                        onPress={(e) => { e.stopPropagation?.(); handleDeleteUser(item); }}
+                    >
+                        <Text style={styles.deleteButtonText}>🗑️</Text>
+                    </TouchableOpacity>
+
+                    {/* Chevron to hint at navigation */}
+                    <Text style={styles.chevron}>›</Text>
+                </View>
+            </Card>
+        </TouchableOpacity>
     ), [activeTab]);
 
     const keyExtractor = useCallback((item: UserProfile) => item.uid, []);
@@ -385,6 +394,11 @@ const styles = StyleSheet.create({
     },
     deleteButtonText: {
         fontSize: 20
+    },
+    chevron: {
+        fontSize: 22,
+        color: '#C7C7CC',
+        marginLeft: 4,
     },
     emptyContainer: {
         padding: 40,

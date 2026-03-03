@@ -80,6 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             logger.success('User profile found:', profile);
             setUserProfile(profile);
             setUserRole(profile.role);
+            profileLoadedRef.current = true; // tell onAuthStateChanged to skip re-fetching
             logger.success('Login successful! Role:', profile.role);
 
             return {
@@ -128,13 +129,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
+    // Flag to prevent double-fetch when login() already loaded the profile
+    const profileLoadedRef = React.useRef(false);
+
     // Listen to auth state changes
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setCurrentUser(user);
 
             if (user) {
-                // User is logged in, fetch profile
+                // If login() already fetched and set the profile, skip the fetch here
+                if (profileLoadedRef.current) {
+                    profileLoadedRef.current = false; // reset for next login
+                    setLoading(false);
+                    return;
+                }
+                // Resuming session (app restart / page refresh) — fetch profile
                 const profile = await fetchUserProfile(user.uid);
                 setUserProfile(profile);
                 setUserRole(profile?.role || null);

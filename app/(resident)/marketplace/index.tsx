@@ -2,55 +2,38 @@
 // Modern marketplace with grid layout and filters
 
 import { Stack, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BorderRadius, Colors, Spacing, Typography } from '../../../constants/designSystem';
 import { Button } from '../../../src/components/common/Button';
 import { SkeletonLoader } from '../../../src/components/common/SkeletonLoader';
 import { ListingCard } from '../../../src/components/marketplace/ListingCard';
-import { useAuth } from '../../../src/contexts/AuthContext';
-import { getApprovedListings, getMyListings } from '../../../src/services/MarketplaceListingService';
+import { useAppData } from '../../../src/contexts/AppDataContext';
 import { Listing } from '../../../src/types';
 
 export default function MarketplaceIndex() {
-    const { userProfile } = useAuth();
+    const { approvedListings, myListings, initializing } = useAppData();
     const router = useRouter();
-    const [approvedListings, setApprovedListings] = useState<Listing[]>([]);
-    const [myListings, setMyListings] = useState<Listing[]>([]);
-    const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState<'browse' | 'my'>('browse');
 
-    useEffect(() => {
-        loadListings();
-    }, []);
-
-    const loadListings = async () => {
-        if (!userProfile) return;
-
-        setLoading(true);
-        const [approved, my] = await Promise.all([
-            getApprovedListings(),
-            getMyListings(userProfile.uid)
-        ]);
-        setApprovedListings(approved);
-        setMyListings(my);
-        setLoading(false);
-    };
-
+    // onSnapshot keeps data live — pull-to-refresh is cosmetic feedback only
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
-        await loadListings();
-        setRefreshing(false);
-    }, [userProfile]);
+        setTimeout(() => setRefreshing(false), 500);
+    }, []);
 
-    const renderListing = useCallback(({ item }: { item: Listing }) => (
-        <ListingCard listing={item} isAdmin={false} />
+    const renderBrowseListing = useCallback(({ item }: { item: Listing }) => (
+        <ListingCard listing={item} isAdmin={false} isOwner={false} />
+    ), []);
+
+    const renderMyListing = useCallback(({ item }: { item: Listing }) => (
+        <ListingCard listing={item} isAdmin={false} isOwner={true} />
     ), []);
 
     const keyExtractor = useCallback((item: Listing) => item.id!, []);
 
-    if (loading) {
+    if (initializing) {
         return (
             <View style={styles.container}>
                 <View style={styles.header}>
@@ -114,7 +97,7 @@ export default function MarketplaceIndex() {
                 {/* Listings */}
                 <FlatList
                     data={currentListings}
-                    renderItem={renderListing}
+                    renderItem={activeTab === 'browse' ? renderBrowseListing : renderMyListing}
                     keyExtractor={keyExtractor}
                     contentContainerStyle={styles.list}
                     refreshControl={

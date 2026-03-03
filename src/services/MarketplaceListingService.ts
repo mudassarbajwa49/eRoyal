@@ -238,3 +238,66 @@ export const rejectListing = async (
         };
     }
 };
+
+/**
+ * Mark a listing as Sold (Resident — their own listing)
+ */
+export const markAsSold = async (listingId: string): Promise<ApiResponse> => {
+    try {
+        await updateDoc(doc(db, 'listings', listingId), {
+            status: 'Sold',
+            soldAt: serverTimestamp()
+        });
+        return { success: true, message: 'Listing marked as sold' };
+    } catch (error) {
+        console.error('Error marking as sold:', error);
+        return { success: false, error: 'Failed to mark as sold' };
+    }
+};
+
+/**
+ * Deactivate / pause a listing (Resident — hides from browse without deleting)
+ */
+export const deactivateListing = async (listingId: string): Promise<ApiResponse> => {
+    try {
+        await updateDoc(doc(db, 'listings', listingId), {
+            status: 'Inactive',
+            deactivatedAt: serverTimestamp()
+        });
+        return { success: true, message: 'Listing paused' };
+    } catch (error) {
+        console.error('Error deactivating listing:', error);
+        return { success: false, error: 'Failed to pause listing' };
+    }
+};
+
+/**
+ * Reactivate a paused listing — resubmits to Pending for admin re-approval
+ */
+export const reactivateListing = async (listingId: string): Promise<ApiResponse> => {
+    try {
+        await updateDoc(doc(db, 'listings', listingId), {
+            status: 'Pending',
+            deactivatedAt: null,
+            reviewedBy: null,
+            reviewedAt: null
+        });
+        return { success: true, message: 'Listing resubmitted for approval' };
+    } catch (error) {
+        console.error('Error reactivating listing:', error);
+        return { success: false, error: 'Failed to reactivate listing' };
+    }
+};
+
+/**
+ * Delete a listing permanently (Resident — only their own)
+ */
+export const deleteListing = async (listingId: string): Promise<ApiResponse> => {
+    try {
+        await deleteDoc(doc(db, 'listings', listingId));
+        return { success: true, message: 'Listing deleted' };
+    } catch (error) {
+        console.error('Error deleting listing:', error);
+        return { success: false, error: 'Failed to delete listing' };
+    }
+};

@@ -1,9 +1,12 @@
 // Security Gate Entry/Exit Screen
 // Camera-ready design with separate Resident and Visitor sections
-// Designed for future integration with license plate recognition
+// expo-camera integrated for live feed + scan-to-fill license plate
+// All vehicle data is live via SecurityDataContext — no getDocs() round-trips
 
-import React, { useCallback, useEffect, useState } from 'react';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+    Alert,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -16,8 +19,11 @@ import { Button } from '../../src/components/common/Button';
 import { Card } from '../../src/components/common/Card';
 import { Input } from '../../src/components/common/Input';
 import { useAuth } from '../../src/contexts/AuthContext';
-import { findActiveVehicle, getActiveVehicles, logVehicleEntry, logVehicleExit } from '../../src/services/VehicleEntryLogService';
-import { lookupVehicleByNumber } from '../../src/services/vehicleRegistrationService';
+import { useSecurityData } from '../../src/contexts/SecurityDataContext';
+
+import { logVehicleEntry, logVehicleExit } from '../../src/services/VehicleEntryLogService';
+import { detectLicensePlate } from '../../src/services/ocrService';
+import { normalizeVehicleNumber } from '../../src/services/vehicleRegistrationService';
 import { RegisteredVehicle, VehicleLog } from '../../src/types';
 
 type TabType = 'resident' | 'visitor' | 'exit';
@@ -34,12 +40,18 @@ function useDebounce<T>(value: T, delay: number): T {
 
 export default function GateEntryScreen() {
     const { userProfile } = useAuth();
+    // Live data from SecurityDataContext — onSnapshot keeps these current automatically
+    const { activeVehicles: activeVehiclesList, registeredVehicles } = useSecurityData();
+
     const [activeTab, setActiveTab] = useState<TabType>('resident');
+
+    // ===== CAMERA STATE =====
+    const [permission, requestPermission] = useCameraPermissions();
+    const cameraRef = useRef<CameraView>(null);
 
     // ===== RESIDENT ENTRY STATE =====
     const [residentVehicleNo, setResidentVehicleNo] = useState('');
     const [registeredVehicle, setRegisteredVehicle] = useState<RegisteredVehicle | null>(null);
-    const [lookingUp, setLookingUp] = useState(false);
     const [residentLoading, setResidentLoading] = useState(false);
     const [residentError, setResidentError] = useState('');
 
@@ -49,72 +61,77 @@ export default function GateEntryScreen() {
     const [visitorPurpose, setVisitorPurpose] = useState('');
     const [visitorHouseNo, setVisitorHouseNo] = useState('');
     const [visitorLoading, setVisitorLoading] = useState(false);
+    const [visitorRegisteredVehicle, setVisitorRegisteredVehicle] = useState<RegisteredVehicle | null>(null);
 
     // ===== EXIT STATE =====
     const [exitVehicleNo, setExitVehicleNo] = useState('');
     const [activeVehicle, setActiveVehicle] = useState<VehicleLog | null>(null);
-    const [activeVehiclesList, setActiveVehiclesList] = useState<VehicleLog[]>([]);
-    const [searchingExit, setSearchingExit] = useState(false);
     const [exitLoading, setExitLoading] = useState(false);
     const [exitError, setExitError] = useState('');
+
+    // ===== OCR SCAN STATE =====
+    const [scanning, setScanning] = useState(false);
 
     // ===== SUCCESS STATE =====
     const [showSuccess, setShowSuccess] = useState(false);
     const [successMessage, setSuccessMessage] = useState({ title: '', subtitle: '' });
 
-    // Debounced values
-    const debouncedResidentNo = useDebounce(residentVehicleNo, 400);
-    const debouncedExitNo = useDebounce(exitVehicleNo, 400);
+    // Debounced values — 250 ms for snappy feel
+    const debouncedResidentNo = useDebounce(residentVehicleNo, 250);
+    const debouncedVisitorNo = useDebounce(visitorVehicleNo, 250);
+    const debouncedExitNo = useDebounce(exitVehicleNo, 250);
 
-    // Load active vehicles count for exit tab
+    // Request camera permission on mount
     useEffect(() => {
-        if (activeTab === 'exit') {
-            loadActiveVehicles();
+        if (!permission?.granted) {
+            requestPermission();
         }
-    }, [activeTab]);
+    }, []);
 
-    const loadActiveVehicles = async () => {
-        const vehicles = await getActiveVehicles();
-        setActiveVehiclesList(vehicles);
-    };
+    // ── In-memory plate lookup (instant — no Firestore round-trip) ────────────
+    const lookupPlateInMemory = useCallback((plate: string): RegisteredVehicle | null => {
+        if (!plate || plate.length < 3) return null;
+        const normalized = plate.trim().toUpperCase();
+        return registeredVehicles.find(v => v.vehicleNo === normalized) ?? null;
+    }, [registeredVehicles]);
 
-    // Auto-lookup for RESIDENT entry
+    // Auto-lookup for RESIDENT entry — purely in-memory
     useEffect(() => {
-        const lookupVehicle = async () => {
-            setResidentError('');
-            if (!debouncedResidentNo || debouncedResidentNo.length < 3) {
-                setRegisteredVehicle(null);
-                return;
-            }
-            setLookingUp(true);
-            const vehicle = await lookupVehicleByNumber(debouncedResidentNo);
-            setLookingUp(false);
-            setRegisteredVehicle(vehicle);
-            if (!vehicle && debouncedResidentNo.length >= 4) {
-                setResidentError('Vehicle not registered. Use Visitor tab for unregistered vehicles.');
-            }
-        };
-        lookupVehicle();
-    }, [debouncedResidentNo]);
+        setResidentError('');
+        if (!debouncedResidentNo || debouncedResidentNo.length < 3) {
+            setRegisteredVehicle(null);
+            return;
+        }
+        const vehicle = lookupPlateInMemory(debouncedResidentNo);
+        setRegisteredVehicle(vehicle);
+        if (!vehicle && debouncedResidentNo.length >= 4) {
+            setResidentError('Vehicle not registered. Use Visitor tab for unregistered vehicles.');
+        }
+    }, [debouncedResidentNo, lookupPlateInMemory]);
 
-    // Auto-lookup for EXIT
+    // Auto-lookup for VISITOR — warn if plate belongs to a registered resident
     useEffect(() => {
-        const searchActive = async () => {
-            setExitError('');
-            if (!debouncedExitNo || debouncedExitNo.length < 3) {
-                setActiveVehicle(null);
-                return;
-            }
-            setSearchingExit(true);
-            const log = await findActiveVehicle(debouncedExitNo);
-            setSearchingExit(false);
-            setActiveVehicle(log);
-            if (!log && debouncedExitNo.length >= 4) {
-                setExitError('Vehicle not found inside');
-            }
-        };
-        searchActive();
-    }, [debouncedExitNo]);
+        if (!debouncedVisitorNo || debouncedVisitorNo.length < 3) {
+            setVisitorRegisteredVehicle(null);
+            return;
+        }
+        setVisitorRegisteredVehicle(lookupPlateInMemory(debouncedVisitorNo));
+    }, [debouncedVisitorNo, lookupPlateInMemory]);
+
+    // Auto-lookup for EXIT — search active vehicles in-memory
+    useEffect(() => {
+        setExitError('');
+        if (!debouncedExitNo || debouncedExitNo.length < 3) {
+            setActiveVehicle(null);
+            return;
+        }
+        const normalized = debouncedExitNo.trim().toUpperCase();
+        const log = activeVehiclesList.find(v => v.vehicleNo === normalized) ?? null;
+        setActiveVehicle(log);
+        if (!log && debouncedExitNo.length >= 4) {
+            setExitError('Vehicle not found inside');
+        }
+    }, [debouncedExitNo, activeVehiclesList]);
 
     // Reset functions
     const resetResidentForm = useCallback(() => {
@@ -128,6 +145,7 @@ export default function GateEntryScreen() {
         setVisitorName('');
         setVisitorPurpose('');
         setVisitorHouseNo('');
+        setVisitorRegisteredVehicle(null);
     }, []);
 
     const resetExitForm = useCallback(() => {
@@ -143,6 +161,133 @@ export default function GateEntryScreen() {
         setTimeout(() => {
             setShowSuccess(false);
         }, 1500);
+    };
+
+    // ===== CAMERA SCAN LOGIC =====
+
+    // Fill whichever tab is active with a detected/typed plate number.
+    const fillPlate = (normalized: string) => {
+        if (activeTab === 'resident') {
+            setResidentVehicleNo(normalized);
+            setResidentError('');
+            setRegisteredVehicle(null);
+        } else if (activeTab === 'visitor') {
+            setVisitorVehicleNo(normalized);
+            setVisitorRegisteredVehicle(null);
+        } else {
+            setExitVehicleNo(normalized);
+            setExitError('');
+            setActiveVehicle(null);
+        }
+    };
+
+    // Manual fallback — cross-platform (Alert.prompt is iOS-only).
+    const promptManual = () => {
+        if (Platform.OS === 'ios') {
+            Alert.prompt(
+                '✏️ Enter License Plate',
+                'Type the plate number (e.g. LEA-1234)',
+                (text) => {
+                    if (!text || !text.trim()) return;
+                    fillPlate(normalizeVehicleNumber(text.trim().toUpperCase()));
+                },
+                'plain-text',
+                '',
+                'default'
+            );
+        } else {
+            // Android / Web: plate field is visible on screen — just tell guard to type it.
+            Alert.alert(
+                '📷 OCR could not read the plate',
+                'Please type the license plate number in the field below.',
+                [{ text: 'OK' }]
+            );
+        }
+    };
+
+    // Primary handler — capture photo → OCR → auto-fill or fall back to manual.
+    const handleOcrScan = async () => {
+        if (!cameraRef.current || scanning) return;
+        setScanning(true);
+        try {
+            const photo = await cameraRef.current.takePictureAsync({
+                quality: 0.85,
+                skipProcessing: true,
+            });
+            if (!photo?.uri) throw new Error('No photo captured');
+
+            const plate = await detectLicensePlate(photo.uri);
+
+            if (plate) {
+                fillPlate(normalizeVehicleNumber(plate));
+            } else {
+                // OCR found nothing — let the guard type it manually
+                promptManual();
+            }
+        } catch (err) {
+            console.warn('[OCR] scan failed, falling back to manual:', err);
+            promptManual();
+        } finally {
+            setScanning(false);
+        }
+    };
+
+    // ===== REUSABLE CAMERA SECTION =====
+    const CameraSection = ({ accentColor }: { accentColor: string }) => {
+        if (!permission) {
+            // Permissions still loading
+            return (
+                <View style={[styles.cameraContainer, { borderColor: accentColor + '55' }]}>
+                    <Text style={styles.cameraStatusText}>Loading camera...</Text>
+                </View>
+            );
+        }
+
+        if (!permission.granted) {
+            return (
+                <View style={[styles.cameraContainer, { borderColor: accentColor + '55' }]}>
+                    <Text style={styles.cameraIcon}>📷</Text>
+                    <Text style={styles.cameraText}>Camera permission required</Text>
+                    <TouchableOpacity style={[styles.permissionButton, { backgroundColor: accentColor }]} onPress={requestPermission}>
+                        <Text style={styles.permissionButtonText}>Grant Camera Access</Text>
+                    </TouchableOpacity>
+                </View>
+            );
+        }
+
+        return (
+            <View style={[styles.cameraContainer, { borderColor: accentColor + '55' }]}>
+                {/* Live camera feed – no children allowed by expo-camera */}
+                <CameraView
+                    ref={cameraRef}
+                    style={styles.camera}
+                    facing="back"
+                />
+
+                {/* Scan guideline overlay – absolutely positioned over the camera */}
+                <View style={styles.cameraOverlay} pointerEvents="none">
+                    <Text style={styles.cameraHint}>Point at license plate</Text>
+                    <View style={[styles.scanGuideline, { borderColor: accentColor }]}>
+                        <View style={[styles.corner, styles.cornerTL, { borderColor: accentColor }]} />
+                        <View style={[styles.corner, styles.cornerTR, { borderColor: accentColor }]} />
+                        <View style={[styles.corner, styles.cornerBL, { borderColor: accentColor }]} />
+                        <View style={[styles.corner, styles.cornerBR, { borderColor: accentColor }]} />
+                    </View>
+                </View>
+
+                {/* Scan / Manual button – absolutely positioned at bottom */}
+                <TouchableOpacity
+                    style={[styles.scanButton, { backgroundColor: accentColor }, scanning && styles.scanButtonDisabled]}
+                    onPress={handleOcrScan}
+                    activeOpacity={0.8}
+                    disabled={scanning}
+                >
+                    <Text style={styles.scanButtonText}>
+                        {scanning ? '⏳  Scanning...' : '📷  Scan Plate'}
+                    </Text>
+                </TouchableOpacity>
+            </View>
+        );
     };
 
     // ===== RESIDENT ENTRY HANDLER =====
@@ -235,7 +380,7 @@ export default function GateEntryScreen() {
             if (result.success) {
                 showSuccessAnimation('Exit Logged 👋', exitVehicleNo);
                 resetExitForm();
-                loadActiveVehicles();
+                // activeVehiclesList updates automatically via SecurityDataContext onSnapshot
             } else {
                 window.alert('Error: ' + (result.error || 'Failed to log exit'));
             }
@@ -304,12 +449,8 @@ export default function GateEntryScreen() {
             {/* ===== RESIDENT ENTRY TAB ===== */}
             {activeTab === 'resident' && (
                 <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-                    {/* Camera Placeholder - For future integration */}
-                    <View style={styles.cameraPlaceholder}>
-                        <Text style={styles.cameraIcon}>📷</Text>
-                        <Text style={styles.cameraText}>Camera feed will appear here</Text>
-                        <Text style={styles.cameraSubtext}>Auto-detect license plate</Text>
-                    </View>
+                    {/* Live Camera – Resident (green accent) */}
+                    <CameraSection accentColor="#10b981" />
 
                     <Card style={styles.entryCard}>
                         <View style={styles.cardHeader}>
@@ -317,7 +458,7 @@ export default function GateEntryScreen() {
                             <Text style={styles.cardHeaderTitle}>Resident Vehicle Entry</Text>
                         </View>
 
-                        {/* Vehicle Number Input - Large for camera scanning */}
+                        {/* Vehicle Number Input */}
                         <View style={styles.section}>
                             <Text style={styles.sectionLabel}>License Plate Number</Text>
                             <Input
@@ -332,7 +473,6 @@ export default function GateEntryScreen() {
                                 containerStyle={styles.inputContainer}
                                 style={styles.plateInput}
                             />
-                            {lookingUp && <Text style={styles.statusText}>🔍 Verifying...</Text>}
 
                             {/* Registered Vehicle Found */}
                             {registeredVehicle && (
@@ -376,12 +516,8 @@ export default function GateEntryScreen() {
             {/* ===== VISITOR ENTRY TAB ===== */}
             {activeTab === 'visitor' && (
                 <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-                    {/* Camera Placeholder */}
-                    <View style={[styles.cameraPlaceholder, styles.cameraPlaceholderOrange]}>
-                        <Text style={styles.cameraIcon}>📷</Text>
-                        <Text style={styles.cameraText}>Camera feed will appear here</Text>
-                        <Text style={styles.cameraSubtext}>Capture visitor vehicle</Text>
-                    </View>
+                    {/* Live Camera – Visitor (orange accent) */}
+                    <CameraSection accentColor="#f59e0b" />
 
                     <Card style={[styles.entryCard, styles.visitorCard]}>
                         <View style={styles.cardHeader}>
@@ -395,11 +531,29 @@ export default function GateEntryScreen() {
                             <Input
                                 placeholder="Enter plate number"
                                 value={visitorVehicleNo}
-                                onChangeText={(text) => setVisitorVehicleNo(text.toUpperCase())}
+                                onChangeText={(text) => {
+                                    setVisitorVehicleNo(text.toUpperCase());
+                                    setVisitorRegisteredVehicle(null);
+                                }}
                                 autoCapitalize="characters"
                                 containerStyle={styles.inputContainer}
                                 style={styles.plateInput}
                             />
+
+                            {/* Warning – this plate belongs to a registered resident */}
+                            {visitorRegisteredVehicle && (
+                                <View style={styles.residentWarningBox}>
+                                    <Text style={styles.residentWarningTitle}>⚠️ Registered Resident Vehicle</Text>
+                                    <Text style={styles.residentWarningName}>{visitorRegisteredVehicle.residentName}</Text>
+                                    <View style={styles.residentWarningDetails}>
+                                        <Text style={styles.residentWarningInfo}>🏠 House {visitorRegisteredVehicle.houseNo}</Text>
+                                        <Text style={styles.residentWarningInfo}>🚗 {visitorRegisteredVehicle.type}</Text>
+                                    </View>
+                                    <Text style={styles.residentWarningHint}>
+                                        Use the Resident tab for registered vehicles.
+                                    </Text>
+                                </View>
+                            )}
                         </View>
 
                         {/* Visitor Details */}
@@ -448,12 +602,8 @@ export default function GateEntryScreen() {
             {/* ===== EXIT TAB ===== */}
             {activeTab === 'exit' && (
                 <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-                    {/* Camera Placeholder */}
-                    <View style={[styles.cameraPlaceholder, styles.cameraPlaceholderBlue]}>
-                        <Text style={styles.cameraIcon}>📷</Text>
-                        <Text style={styles.cameraText}>Camera feed will appear here</Text>
-                        <Text style={styles.cameraSubtext}>Auto-detect exiting vehicle</Text>
-                    </View>
+                    {/* Live Camera – Exit (blue accent) */}
+                    <CameraSection accentColor="#3b82f6" />
 
                     <Card style={[styles.entryCard, styles.exitCard]}>
                         <View style={styles.cardHeader}>
@@ -476,7 +626,6 @@ export default function GateEntryScreen() {
                                 containerStyle={styles.inputContainer}
                                 style={styles.plateInput}
                             />
-                            {searchingExit && <Text style={styles.statusText}>🔍 Searching...</Text>}
 
                             {/* Vehicle Found */}
                             {activeVehicle && (
@@ -566,29 +715,68 @@ const styles = StyleSheet.create({
     scroll: { flex: 1 },
     content: { padding: 16, paddingBottom: 40 },
 
-    // Camera Placeholder - for future integration
-    cameraPlaceholder: {
-        height: 120,
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-        borderRadius: 16,
-        borderWidth: 2,
-        borderColor: 'rgba(16, 185, 129, 0.3)',
-        borderStyle: 'dashed',
-        justifyContent: 'center',
-        alignItems: 'center',
+    // ===== CAMERA STYLES =====
+    cameraContainer: {
+        height: 230,
         marginBottom: 16,
+        borderRadius: 20,
+        overflow: 'hidden',
+        backgroundColor: '#0a0a14',
+        borderWidth: 1.5,
     },
-    cameraPlaceholderOrange: {
-        backgroundColor: 'rgba(245, 158, 11, 0.1)',
-        borderColor: 'rgba(245, 158, 11, 0.3)',
+    camera: {
+        ...StyleSheet.absoluteFillObject,
     },
-    cameraPlaceholderBlue: {
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-        borderColor: 'rgba(59, 130, 246, 0.3)',
+    cameraOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 12,
+        backgroundColor: 'rgba(0,0,0,0.25)',
     },
-    cameraIcon: { fontSize: 32, marginBottom: 8 },
-    cameraText: { fontSize: 14, color: '#6b6b8a', fontWeight: '500' },
-    cameraSubtext: { fontSize: 11, color: '#4a4a6a', marginTop: 2 },
+    cameraHint: {
+        color: 'rgba(255,255,255,0.7)',
+        fontSize: 12,
+        fontWeight: '500',
+        letterSpacing: 0.5,
+    },
+    scanGuideline: {
+        width: '78%',
+        height: 58,
+        borderWidth: 1.5,
+        borderRadius: 8,
+        position: 'relative',
+    },
+    // Corner accent marks
+    corner: {
+        position: 'absolute',
+        width: 14,
+        height: 14,
+        borderColor: 'inherit',
+    },
+    cornerTL: { top: -2, left: -2, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: 5 },
+    cornerTR: { top: -2, right: -2, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: 5 },
+    cornerBL: { bottom: -2, left: -2, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: 5 },
+    cornerBR: { bottom: -2, right: -2, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: 5 },
+    scanButton: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        paddingVertical: 13,
+        alignItems: 'center',
+    },
+    scanButtonDisabled: { opacity: 0.55 },
+    scanButtonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+    cameraStatusText: { color: '#6b6b8a', fontSize: 14 },
+    cameraIcon: { fontSize: 32, marginBottom: 10 },
+    cameraText: { fontSize: 14, color: '#6b6b8a', fontWeight: '500', marginBottom: 14 },
+    permissionButton: {
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 10,
+    },
+    permissionButtonText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
     // Entry Cards
     entryCard: {
@@ -631,6 +819,7 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         letterSpacing: 2,
         textAlign: 'center',
+        color: '#ffffff',
     },
     statusText: { marginTop: 10, fontSize: 13, color: '#6b6b8a', textAlign: 'center' },
 
@@ -694,6 +883,37 @@ const styles = StyleSheet.create({
         borderColor: 'rgba(239, 68, 68, 0.3)'
     },
     errorText: { fontSize: 13, color: '#ef4444', textAlign: 'center' },
+
+    // Resident Warning Box (shown in Visitor tab if plate is registered)
+    residentWarningBox: {
+        marginTop: 16,
+        backgroundColor: 'rgba(245, 158, 11, 0.12)',
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 1.5,
+        borderColor: 'rgba(245, 158, 11, 0.5)',
+    },
+    residentWarningTitle: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#f59e0b',
+        marginBottom: 6,
+        textTransform: 'uppercase',
+        letterSpacing: 0.8,
+    },
+    residentWarningName: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#fff',
+        marginBottom: 8,
+    },
+    residentWarningDetails: { flexDirection: 'row', gap: 14, marginBottom: 10 },
+    residentWarningInfo: { fontSize: 13, color: '#fbbf24' },
+    residentWarningHint: {
+        fontSize: 12,
+        color: 'rgba(251,191,36,0.75)',
+        fontStyle: 'italic',
+    },
 
     // Buttons
     actionButton: { marginTop: 8, paddingVertical: 16, borderRadius: 14 },

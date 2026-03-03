@@ -62,7 +62,7 @@ export default function ResidentHome() {
         const complaintsUnsub = onSnapshot(
             query(
                 collection(db, 'complaints'),
-                where('userId', '==', userProfile.uid),
+                where('residentId', '==', userProfile.uid),
                 where('status', '==', 'Pending')
             ),
             (snapshot) => {

@@ -1,20 +1,15 @@
 /**
  * Admin Dashboard
  * Main dashboard with navigation to all admin features
- * 
- * This screen shows:
- * - Welcome message with admin name
- * - Quick stats (pending bills, complaints, listings)
- * - Menu grid to navigate to all admin features
+ *
+ * Reads live stats from AdminDataContext — no cold Firestore fetches.
  */
 
 import { useRouter } from 'expo-router';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { db } from '../../firebaseConfig';
 import { Card } from '../../src/components/common/Card';
-import { LoadingSpinner } from '../../src/components/common/LoadingSpinner';
+import { useAdminData } from '../../src/contexts/AdminDataContext';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useBreakpoint } from '../../src/hooks/useResponsive';
 import { borderRadius, fontSize, spacing } from '../../src/utils/responsive';
@@ -23,52 +18,16 @@ export default function AdminDashboard() {
     const { userProfile } = useAuth();
     const router = useRouter();
     const breakpoint = useBreakpoint();
+    const { bills, complaints, pendingListings } = useAdminData();
 
-    // Real-time dashboard statistics
-    const [stats, setStats] = React.useState({
-        pendingBills: 0,
-        pendingComplaints: 0,
-        pendingListings: 0
-    });
-    const [loading, setLoading] = React.useState(true);
-
-    // Set up real-time listeners for all stats
-    React.useEffect(() => {
-        // Listen to unpaid bills
-        const billsUnsub = onSnapshot(
-            query(collection(db, 'bills'), where('status', '==', 'Unpaid')),
-            (snapshot) => {
-                setStats(prev => ({ ...prev, pendingBills: snapshot.size }));
-                setLoading(false);
-            }
-        );
-
-        // Listen to pending complaints
-        const complaintsUnsub = onSnapshot(
-            query(collection(db, 'complaints'), where('status', '==', 'Pending')),
-            (snapshot) => {
-                setStats(prev => ({ ...prev, pendingComplaints: snapshot.size }));
-            }
-        );
-
-        // Listen to pending marketplace listings
-        const listingsUnsub = onSnapshot(
-            query(collection(db, 'listings'), where('status', '==', 'Pending')),
-            (snapshot) => {
-                setStats(prev => ({ ...prev, pendingListings: snapshot.size }));
-            }
-        );
-
-        // Cleanup listeners on unmount
-        return () => {
-            billsUnsub();
-            complaintsUnsub();
-            listingsUnsub();
-        };
-    }, []);
+    // Derive live dashboard statistics from context — zero extra Firestore reads
+    const stats = useMemo(() => ({
+        pendingBills: bills.filter(b => b.status === 'Unpaid').length,
+        pendingComplaints: complaints.filter(c => c.status === 'Pending').length,
+        pendingListings: pendingListings.length,
+    }), [bills, complaints, pendingListings]);
 
     // Menu item configuration
-    // Each item has icon, title, description, route, and color
     const menuItems = [
         {
             title: 'User Management',
@@ -117,9 +76,6 @@ export default function AdminDashboard() {
         }
     ];
 
-    if (loading) {
-        return <LoadingSpinner message="Loading dashboard..." />;
-    }
 
     return (
         <ScrollView style={styles.container}>

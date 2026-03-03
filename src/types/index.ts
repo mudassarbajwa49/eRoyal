@@ -98,7 +98,7 @@ export interface Complaint {
 // ==========================================
 
 export type ListingType = 'Sell' | 'Rent';
-export type ListingStatus = 'Pending' | 'Approved' | 'Rejected';
+export type ListingStatus = 'Pending' | 'Approved' | 'Rejected' | 'Sold' | 'Inactive';
 
 export interface Listing {
     id?: string;
@@ -117,6 +117,8 @@ export interface Listing {
     reviewedBy: string | null;
     reviewedAt: Timestamp | FieldValue | null;
     rejectionReason: string | null;
+    soldAt?: Timestamp | FieldValue | null;
+    deactivatedAt?: Timestamp | FieldValue | null;
 }
 
 // ==========================================

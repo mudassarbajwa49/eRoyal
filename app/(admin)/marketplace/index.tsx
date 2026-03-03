@@ -1,116 +1,171 @@
 // Admin Marketplace Index
-// Approve or reject property listings
+// Approve or reject property listings — reads live data from AdminDataContext
 
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { Alert, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { LoadingSpinner } from '../../../src/components/common/LoadingSpinner';
+import React, { useState } from 'react';
+import {
+    ActivityIndicator,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 import { ListingCard } from '../../../src/components/marketplace/ListingCard';
+import { useAdminData } from '../../../src/contexts/AdminDataContext';
 import { useAuth } from '../../../src/contexts/AuthContext';
 import {
     approveListing,
-    getApprovedListings,
-    getPendingListings,
-    getRejectedListings,
-    rejectListing
+    rejectListing,
 } from '../../../src/services/MarketplaceListingService';
-import { Listing } from '../../../src/types';
 
 export default function MarketplaceIndex() {
     const router = useRouter();
     const { userProfile } = useAuth();
-    const [pendingListings, setPendingListings] = useState<Listing[]>([]);
-    const [approvedListings, setApprovedListings] = useState<Listing[]>([]);
-    const [rejectedListings, setRejectedListings] = useState<Listing[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { pendingListings, approvedListings, rejectedListings, refresh } = useAdminData();
+
     const [refreshing, setRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
 
-    useEffect(() => {
-        loadListings();
-    }, []);
-
-    const loadListings = async () => {
-        setLoading(true);
-        const [pending, approved, rejected] = await Promise.all([
-            getPendingListings(),
-            getApprovedListings(),
-            getRejectedListings()
-        ]);
-        console.log('📋 Loaded listings:', {
-            pending: pending.length,
-            approved: approved.length,
-            rejected: rejected.length
-        });
-        console.log('✅ Approved listings:', approved);
-        setPendingListings(pending);
-        setApprovedListings(approved);
-        setRejectedListings(rejected);
-        setLoading(false);
-    };
+    // ── Inline confirmation state (replaces window.confirm / prompt) ──────────
+    const [confirmId, setConfirmId] = useState<string | null>(null);
+    const [confirmType, setConfirmType] = useState<'approve' | 'reject' | null>(null);
+    const [rejectReason, setRejectReason] = useState('');
+    const [busy, setBusy] = useState(false);
+    const [feedback, setFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
 
     const onRefresh = async () => {
         setRefreshing(true);
-        await loadListings();
-        setRefreshing(false);
+        refresh();
+        setTimeout(() => setRefreshing(false), 500);
     };
 
-    const handleApprove = async (listingId: string) => {
-        console.log('🔵 Approve button clicked for listing:', listingId);
+    // Pressing Approve on a card → open confirm panel
+    const handleApprove = (listingId: string) => {
+        setConfirmId(listingId);
+        setConfirmType('approve');
+        setRejectReason('');
+        setFeedback(null);
+    };
 
-        // Use window.confirm for web compatibility (Alert.alert doesn't work on web)
-        const confirmed = window.confirm('Are you sure you want to approve this property listing?');
+    // Pressing Reject on a card → open reject panel with reason input
+    const handleReject = (listingId: string) => {
+        setConfirmId(listingId);
+        setConfirmType('reject');
+        setRejectReason('');
+        setFeedback(null);
+    };
 
-        if (!confirmed) {
-            console.log('❌ Approval cancelled');
-            return;
-        }
+    const cancelConfirm = () => {
+        setConfirmId(null);
+        setConfirmType(null);
+        setRejectReason('');
+    };
 
-        console.log('✅ Approve confirmed, calling approveListing...');
-        const result = await approveListing(listingId, userProfile!.uid);
-
-        console.log('📋 Approve result:', result);
-
-        if (result.success) {
-            Alert.alert('Success', 'Listing approved successfully');
-            loadListings();
+    const executeApprove = async () => {
+        if (!confirmId) return;
+        setBusy(true);
+        const res = await approveListing(confirmId, userProfile!.uid);
+        setBusy(false);
+        if (res.success) {
+            setFeedback({ ok: true, msg: 'Listing approved successfully ✓' });
+            cancelConfirm();
+            setTimeout(() => setFeedback(null), 3000);
         } else {
-            Alert.alert('Error', result.error || 'Failed to approve listing');
+            setFeedback({ ok: false, msg: res.error || 'Failed to approve listing' });
         }
     };
 
-    const handleReject = async (listingId: string) => {
-        // Use native prompt for web compatibility (Alert.prompt is iOS-only)
-        const reason = prompt('Please provide a reason for rejection:');
-
-        if (reason === null) {
-            // User cancelled
+    const executeReject = async () => {
+        if (!rejectReason.trim()) {
+            setFeedback({ ok: false, msg: 'Please enter a rejection reason' });
             return;
         }
-
-        if (!reason || !reason.trim()) {
-            Alert.alert('Error', 'Please provide a rejection reason');
-            return;
-        }
-
-        const result = await rejectListing(listingId, userProfile!.uid, reason);
-
-        if (result.success) {
-            Alert.alert('Rejected', 'Listing has been rejected');
-            loadListings();
+        if (!confirmId) return;
+        setBusy(true);
+        const res = await rejectListing(confirmId, userProfile!.uid, rejectReason.trim());
+        setBusy(false);
+        if (res.success) {
+            setFeedback({ ok: true, msg: 'Listing rejected' });
+            cancelConfirm();
+            setTimeout(() => setFeedback(null), 3000);
         } else {
-            Alert.alert('Error', result.error || 'Failed to reject listing');
+            setFeedback({ ok: false, msg: res.error || 'Failed to reject listing' });
         }
     };
-
-    if (loading) {
-        return <LoadingSpinner message="Loading marketplace..." />;
-    }
 
     return (
         <View style={styles.container}>
-            {/* Tabs */}
+
+            {/* ── Global feedback banner ── */}
+            {feedback && !confirmId && (
+                <View style={[styles.banner, { backgroundColor: feedback.ok ? '#DCFCE7' : '#FEE2E2' }]}>
+                    <Text style={[styles.bannerTxt, { color: feedback.ok ? '#16A34A' : '#DC2626' }]}>
+                        {feedback.ok ? '✅' : '⚠️'} {feedback.msg}
+                    </Text>
+                </View>
+            )}
+
+            {/* ── Inline confirm / reject overlay ── */}
+            {confirmId && (
+                <View style={styles.overlay}>
+                    {feedback && (
+                        <View style={[styles.overlayFeedback, { backgroundColor: feedback.ok ? '#DCFCE7' : '#FEE2E2' }]}>
+                            <Text style={[styles.overlayFeedbackTxt, { color: feedback.ok ? '#16A34A' : '#DC2626' }]}>
+                                {feedback.msg}
+                            </Text>
+                        </View>
+                    )}
+
+                    {confirmType === 'approve' && (
+                        <>
+                            <Text style={styles.overlayQ}>Approve this listing? It will go live immediately.</Text>
+                            <View style={styles.overlayBtns}>
+                                <TouchableOpacity style={[styles.overlayBtn, styles.approveBtn]} onPress={executeApprove} disabled={busy}>
+                                    {busy
+                                        ? <ActivityIndicator color="#fff" size="small" />
+                                        : <Text style={styles.overlayBtnTxt}>✅ Yes, Approve</Text>}
+                                </TouchableOpacity>
+                                <TouchableOpacity style={[styles.overlayBtn, styles.cancelBtn]} onPress={cancelConfirm} disabled={busy}>
+                                    <Text style={styles.overlayBtnTxt}>Cancel</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </>
+                    )}
+
+                    {confirmType === 'reject' && (
+                        <>
+                            <Text style={styles.overlayQ}>Rejection reason (required):</Text>
+                            <TextInput
+                                style={styles.reasonInput}
+                                placeholder="Enter reason for rejection..."
+                                placeholderTextColor="#9CA3AF"
+                                value={rejectReason}
+                                onChangeText={setRejectReason}
+                                multiline
+                                numberOfLines={3}
+                                textAlignVertical="top"
+                                autoFocus
+                            />
+                            <View style={styles.overlayBtns}>
+                                <TouchableOpacity style={[styles.overlayBtn, styles.rejectBtn]} onPress={executeReject} disabled={busy}>
+                                    {busy
+                                        ? <ActivityIndicator color="#fff" size="small" />
+                                        : <Text style={styles.overlayBtnTxt}>❌ Confirm Reject</Text>}
+                                </TouchableOpacity>
+                                <TouchableOpacity style={[styles.overlayBtn, styles.cancelBtn]} onPress={cancelConfirm} disabled={busy}>
+                                    <Text style={styles.overlayBtnTxt}>Cancel</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </>
+                    )}
+                </View>
+            )}
+
+            {/* ── Tabs (original structure) ── */}
             <View style={styles.tabContainer}>
                 <TouchableOpacity
                     style={[styles.tab, activeTab === 'pending' && styles.activeTab]}
@@ -138,7 +193,7 @@ export default function MarketplaceIndex() {
                 </TouchableOpacity>
             </View>
 
-            {/* Content */}
+            {/* ── Content (original structure) ── */}
             <ScrollView
                 style={styles.content}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -209,6 +264,39 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#F5F7FA'
     },
+    // Feedback banner (global, shows after confirm panel closes)
+    banner: {
+        paddingHorizontal: 16, paddingVertical: 10,
+    },
+    bannerTxt: { fontSize: 14, fontWeight: '600' },
+
+    // Inline confirm/reject overlay
+    overlay: {
+        backgroundColor: '#1F2937',
+        margin: 12,
+        borderRadius: 14,
+        padding: 16,
+    },
+    overlayFeedback: { borderRadius: 8, padding: 8, marginBottom: 10 },
+    overlayFeedbackTxt: { fontSize: 13, fontWeight: '600' },
+    overlayQ: { color: '#F9FAFB', fontSize: 15, fontWeight: '600', marginBottom: 12 },
+    reasonInput: {
+        backgroundColor: '#374151',
+        color: '#F9FAFB',
+        borderRadius: 10,
+        padding: 12,
+        fontSize: 14,
+        minHeight: 90,
+        marginBottom: 12,
+    },
+    overlayBtns: { flexDirection: 'row', gap: 10 },
+    overlayBtn: { flex: 1, paddingVertical: 11, borderRadius: 10, alignItems: 'center' },
+    overlayBtnTxt: { color: '#fff', fontSize: 14, fontWeight: '700' },
+    approveBtn: { backgroundColor: '#16A34A' },
+    rejectBtn: { backgroundColor: '#DC2626' },
+    cancelBtn: { backgroundColor: '#4B5563' },
+
+    // Original styles preserved exactly
     tabContainer: {
         flexDirection: 'row',
         backgroundColor: '#fff',

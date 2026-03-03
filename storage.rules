@@ -26,7 +26,7 @@ service firebase.storage {
     // ===========================
     // BILL PAYMENT PROOFS
     // ===========================
-    // Structure: bills/residentId/billId_timestamp
+    // Structure: bills/residentId/billId_timestamp (2-level)
     match /bills/{residentId}/{fileName} {
       // Anyone authenticated can read (admin needs to verify payments)
       allow read: if isAuthenticated();
@@ -37,6 +37,22 @@ service firebase.storage {
                     && request.auth.uid == residentId
                     && isValidImage()
                     && isValidSize(2);
+      
+      // No updates or deletes (maintain audit trail)
+      allow update, delete: if false;
+    }
+    
+    // Structure: bills/residentId/subfolder/fileName (3-level – actual upload path)
+    match /bills/{residentId}/{subfolder}/{fileName} {
+      // Anyone authenticated can read
+      allow read: if isAuthenticated();
+      
+      // Only the resident can upload to their own folder
+      // Must be image type and under 5MB
+      allow create: if isAuthenticated()
+                    && request.auth.uid == residentId
+                    && isValidImage()
+                    && isValidSize(5);
       
       // No updates or deletes (maintain audit trail)
       allow update, delete: if false;

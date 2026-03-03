@@ -2,44 +2,28 @@
 // Modern bills interface with tabs and enhanced cards
 
 import { Stack, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BillCard } from '../../../src/components/bills/BillCard';
 import { SkeletonLoader } from '../../../src/components/common/SkeletonLoader';
-import { useAuth } from '../../../src/contexts/AuthContext';
+import { useAppData } from '../../../src/contexts/AppDataContext';
 import { useBreakpoint, useResponsive } from '../../../src/hooks/useResponsive';
-import { getResidentBills } from '../../../src/services/MonthlyBillingService';
 import { Bill } from '../../../src/types';
 import { borderRadius, fontSize, spacing } from '../../../src/utils/responsive';
 
 export default function BillsIndex() {
-    const { userProfile } = useAuth();
+    const { bills, initializing } = useAppData();
     const router = useRouter();
     const responsive = useResponsive();
     const breakpoint = useBreakpoint();
-    const [bills, setBills] = useState<Bill[]>([]);
-    const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [filter, setFilter] = useState<'all' | 'unpaid' | 'pending' | 'paid'>('all');
 
-    useEffect(() => {
-        loadBills();
-    }, []);
-
-    const loadBills = async (forceRefresh = false) => {
-        if (!userProfile) return;
-
-        setLoading(true);
-        const result = await getResidentBills(userProfile.uid, false, forceRefresh);
-        setBills(result);
-        setLoading(false);
-    };
-
+    // onSnapshot keeps data live — pull-to-refresh is just cosmetic feedback
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
-        await loadBills(true); // Force refresh to bypass cache
-        setRefreshing(false);
-    }, [userProfile]);
+        setTimeout(() => setRefreshing(false), 500);
+    }, []);
 
     const handlePayPress = useCallback((billId: string) => {
         router.push(`/(resident)/bills/${billId}` as any);
@@ -70,7 +54,7 @@ export default function BillsIndex() {
         index,
     }), []);
 
-    if (loading) {
+    if (initializing) {
         return (
             <View style={styles.container}>
                 <View style={styles.filterContainer}>

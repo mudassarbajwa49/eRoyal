@@ -2,16 +2,16 @@
 // Tab view: My Registered Vehicles + Entry Logs
 
 import { Stack, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors, Spacing, Typography } from '../../../constants/designSystem';
 import { Button } from '../../../src/components/common/Button';
 import { Card } from '../../../src/components/common/Card';
 import { SkeletonLoader } from '../../../src/components/common/SkeletonLoader';
 import { StatusBadge } from '../../../src/components/common/StatusBadge';
+import { useAppData } from '../../../src/contexts/AppDataContext';
 import { useAuth } from '../../../src/contexts/AuthContext';
-import { getResidentVehicleLogs } from '../../../src/services/VehicleEntryLogService';
-import { deleteVehicle, getResidentVehicles } from '../../../src/services/vehicleRegistrationService';
+import { deleteVehicle } from '../../../src/services/vehicleRegistrationService';
 import { RegisteredVehicle, VehicleLog } from '../../../src/types';
 
 type TabType = 'vehicles' | 'logs';
@@ -19,34 +19,15 @@ type TabType = 'vehicles' | 'logs';
 export default function VehiclesIndex() {
     const router = useRouter();
     const { userProfile } = useAuth();
+    const { vehicles, vehicleLogs: logs, initializing } = useAppData();
     const [activeTab, setActiveTab] = useState<TabType>('vehicles');
-    const [vehicles, setVehicles] = useState<RegisteredVehicle[]>([]);
-    const [logs, setLogs] = useState<VehicleLog[]>([]);
-    const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
-    useEffect(() => {
-        loadData();
-    }, []);
-
-    const loadData = async () => {
-        if (!userProfile) return;
-
-        setLoading(true);
-        const [vehiclesResult, logsResult] = await Promise.all([
-            getResidentVehicles(userProfile.uid),
-            getResidentVehicleLogs(userProfile.uid)
-        ]);
-        setVehicles(vehiclesResult);
-        setLogs(logsResult);
-        setLoading(false);
-    };
-
+    // onSnapshot keeps data live — pull-to-refresh is cosmetic feedback only
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
-        await loadData();
-        setRefreshing(false);
-    }, [userProfile]);
+        setTimeout(() => setRefreshing(false), 500);
+    }, []);
 
     const handleAddVehicle = () => {
         router.push('/(resident)/vehicles/add' as any);
@@ -60,7 +41,7 @@ export default function VehiclesIndex() {
             const result = await deleteVehicle(vehicle.id, userProfile.uid);
             if (result.success) {
                 window.alert('Vehicle deleted successfully');
-                loadData();
+                // onSnapshot listener in AppDataContext will update the list automatically
             } else {
                 window.alert('Error: ' + (result.error || 'Failed to delete vehicle'));
             }
@@ -149,7 +130,7 @@ export default function VehiclesIndex() {
 
     const keyExtractor = useCallback((item: RegisteredVehicle | VehicleLog) => item.id!, []);
 
-    if (loading) {
+    if (initializing) {
         return (
             <View style={styles.container}>
                 <View style={styles.list}>

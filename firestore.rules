@@ -11,23 +11,35 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // Check if user is admin using custom claims token (case-insensitive)
-    // This is consistent with storage rules
+    // Check if user is admin:
+    // 1st: fast path via Firebase custom claims (set by Admin SDK / Cloud Functions)
+    // 2nd: fallback — check if a doc exists in the 'admins' collection (no custom claims needed)
     function isAdmin() {
-      return isAuthenticated() && 
-             (request.auth.token.role == 'admin' || request.auth.token.role == 'Admin');
+      return isAuthenticated() && (
+        request.auth.token.role == 'admin' ||
+        request.auth.token.role == 'Admin' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
     }
     
-    // Check if user is resident using custom claims token (case-insensitive)
+    // Check if user is resident:
+    // 1st: custom claims  2nd: check 'residents' collection
     function isResident() {
-      return isAuthenticated() && 
-             (request.auth.token.role == 'resident' || request.auth.token.role == 'Resident');
+      return isAuthenticated() && (
+        request.auth.token.role == 'resident' ||
+        request.auth.token.role == 'Resident' ||
+        exists(/databases/$(database)/documents/residents/$(request.auth.uid))
+      );
     }
     
-    // Check if user is security staff using custom claims token (case-insensitive)
+    // Check if user is security staff:
+    // 1st: custom claims  2nd: check 'security_staff' collection
     function isSecurity() {
-      return isAuthenticated() && 
-             (request.auth.token.role == 'security' || request.auth.token.role == 'Security');
+      return isAuthenticated() && (
+        request.auth.token.role == 'security' ||
+        request.auth.token.role == 'Security' ||
+        exists(/databases/$(database)/documents/security_staff/$(request.auth.uid))
+      );
     }
     
     // Check if user owns this resource
@@ -84,13 +96,17 @@ service cloud.firestore {
       
       // Admins can update any bill
       // Residents can ONLY update their own bills AND only upload payment proof
-      allow update: if isAdmin() || 
-                       (isResident() && 
-                        resource.data.residentId == request.auth.uid &&
-                        // Only allow changing proof-related fields
-                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['proofUrl', 'proofUploadedAt', 'status']) &&
-                        // Can only change status to 'Pending' (awaiting verification)
-                        request.resource.data.status == 'Pending');
+      // Falls back to Firestore profile check when custom claim token is stale
+      allow update: if (
+        isAdmin() ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin'
+      ) || (
+        isResident() &&
+        resource.data.residentId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['proofUrl', 'proofUploadedAt', 'status']) &&
+        request.resource.data.status == 'Pending'
+      );
       
       // Never allow delete (keep for audit trail)
       allow delete: if false;
@@ -192,14 +208,20 @@ service cloud.firestore {
       // Everyone authenticated can read
       allow read: if isAuthenticated();
       
-      // Security staff can create vehicle logs
-      allow create: if isSecurity();
+      // Security staff OR admin can create vehicle logs
+      // Checks both custom claims AND Firestore user profile (fallback for un-refreshed tokens)
+      allow create: if isAuthenticated() && (
+        isSecurity() || isAdmin() ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Security'
+      );
       
-      // Security staff can update logs (for exit time)
-      allow update: if isSecurity();
-      
-      // Admins can also read/update
-      allow read, update: if isAdmin();
+      // Security staff OR admin can update logs (exit time)
+      allow update: if isAuthenticated() && (
+        isSecurity() || isAdmin() ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Security'
+      );
       
       // Never allow delete (audit trail)
       allow delete: if false;

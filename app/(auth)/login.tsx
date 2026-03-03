@@ -3,7 +3,7 @@
 
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../src/components/common/Button';
 import { Input } from '../../src/components/common/Input';
 import { useAuth } from '../../src/contexts/AuthContext';
@@ -14,6 +14,7 @@ export default function LoginScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [loginError, setLoginError] = useState('');
     const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
     const validateForm = (): boolean => {
@@ -46,6 +47,7 @@ export default function LoginScreen() {
         console.log('Attempting login with:', email);
         setLoading(true);
         setErrors({});
+        setLoginError('');
 
         try {
             const result = await login(email.trim(), password);
@@ -55,7 +57,9 @@ export default function LoginScreen() {
 
             if (!result.success) {
                 console.error('Login failed:', result.error);
-                Alert.alert('Login Failed', result.error || 'Invalid credentials');
+                const msg = result.error || 'Invalid credentials';
+                setLoginError(msg);
+                Alert.alert('Login Failed', msg);
             } else {
                 console.log('Login successful!');
 
@@ -84,7 +88,9 @@ export default function LoginScreen() {
         } catch (error) {
             console.error('Login error caught:', error);
             setLoading(false);
-            Alert.alert('Error', 'An unexpected error occurred. Check console for details.');
+            const msg = 'An unexpected error occurred.';
+            setLoginError(msg);
+            Alert.alert('Error', msg);
         }
         // Navigation handled automatically by AuthContext + RootLayout
     };
@@ -92,11 +98,11 @@ export default function LoginScreen() {
     return (
         <KeyboardAvoidingView
             style={styles.container}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior="padding"
         >
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
-                keyboardShouldPersistTaps="handled"
+                keyboardShouldPersistTaps="always"
             >
                 <View style={styles.content}>
                     {/* Logo/Header */}
@@ -137,6 +143,13 @@ export default function LoginScreen() {
                             fullWidth
                             style={styles.loginButton}
                         />
+
+                        {/* Visible error banner — works even if Alert is blocked on web */}
+                        {loginError ? (
+                            <View style={styles.errorBanner}>
+                                <Text style={styles.errorBannerText}>⚠️ {loginError}</Text>
+                            </View>
+                        ) : null}
                     </View>
 
                     {/* Footer */}
@@ -206,5 +219,18 @@ const styles = StyleSheet.create({
     versionText: {
         fontSize: 12,
         color: '#999'
+    },
+    errorBanner: {
+        marginTop: 12,
+        backgroundColor: '#FEE2E2',
+        borderRadius: 8,
+        padding: 12,
+        borderLeftWidth: 4,
+        borderLeftColor: '#DC2626'
+    },
+    errorBannerText: {
+        color: '#DC2626',
+        fontSize: 14,
+        fontWeight: '500'
     }
 });
