@@ -3,7 +3,7 @@
 
 import { Stack, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Colors, Spacing, Typography } from '../../../constants/designSystem';
 import { Button } from '../../../src/components/common/Button';
 import { Card } from '../../../src/components/common/Card';
@@ -48,7 +48,7 @@ export default function AddVehicleScreen() {
             );
 
             if (result.success) {
-                window.alert('Success: ' + (result.message || 'Vehicle registered successfully!'));
+                Alert.alert('Success', result.message || 'Vehicle registered successfully!');
                 router.back();
             } else {
                 setError(result.error || 'Failed to register vehicle');

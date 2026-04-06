@@ -9,12 +9,11 @@
  */
 
 import { useRouter } from 'expo-router';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { db } from '../../firebaseConfig';
 import { Avatar } from '../../src/components/common/Avatar';
 import { Card } from '../../src/components/common/Card';
+import { useAppData } from '../../src/contexts/AppDataContext';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useBreakpoint } from '../../src/hooks/useResponsive';
 import { borderRadius, fontSize, spacing } from '../../src/utils/responsive';
@@ -31,75 +30,40 @@ function getGreeting(): string {
 
 export default function ResidentHome() {
     const { userProfile } = useAuth();
+    const { bills, complaints } = useAppData(); // BUG 7 fixed: use context instead of duplicate onSnapshot listeners
     const router = useRouter();
     const breakpoint = useBreakpoint();
-
-    // State for quick stats
-    const [stats, setStats] = React.useState({
-        unpaidBills: 0,
-        pendingComplaints: 0,
-        vehiclesInside: 0
-    });
     const [refreshing, setRefreshing] = React.useState(false);
 
-    // Set up real-time listeners for resident stats
-    React.useEffect(() => {
-        if (!userProfile) return;
-
-        // Listen to unpaid bills
-        const billsUnsub = onSnapshot(
-            query(
-                collection(db, 'bills'),
-                where('residentId', '==', userProfile.uid),
-                where('status', '==', 'Unpaid')
-            ),
-            (snapshot) => {
-                setStats(prev => ({ ...prev, unpaidBills: snapshot.size }));
-            }
-        );
-
-        // Listen to pending complaints
-        const complaintsUnsub = onSnapshot(
-            query(
-                collection(db, 'complaints'),
-                where('residentId', '==', userProfile.uid),
-                where('status', '==', 'Pending')
-            ),
-            (snapshot) => {
-                setStats(prev => ({ ...prev, pendingComplaints: snapshot.size }));
-            }
-        );
-
-        // Cleanup listeners on unmount
-        return () => {
-            billsUnsub();
-            complaintsUnsub();
-        };
-    }, [userProfile]);
+    // Derive stats from context data (no extra Firestore reads)
+    const unpaidBills = useMemo(() => bills.filter(b => b.status === 'Unpaid').length, [bills]);
+    const pendingComplaints = useMemo(
+        () => complaints.filter(c => c.status === 'Pending' || c.status === 'In Progress').length,
+        [complaints]
+    );
 
     /**
      * Refresh data when user pulls down
      */
     const onRefresh = async () => {
         setRefreshing(true);
-        // Just toggle refresh state - real-time listeners handle actual updates
+        // AppDataContext real-time listeners auto-update — just reset the visual state
         setTimeout(() => setRefreshing(false), 500);
     };
 
-    // Quick status card configuration
+    // Quick status card configuration (driven by AppDataContext — no local state needed)
     const statusCards = [
         {
             title: 'Pending Bills',
-            value: stats.unpaidBills,
+            value: unpaidBills,
             icon: '💳',
-            // Red if unpaid bills exist, green otherwise
-            color: stats.unpaidBills > 0 ? '#EF4444' : '#10B981',
-            bgColor: stats.unpaidBills > 0 ? '#FEE2E2' : '#D1FAE5',
+            color: unpaidBills > 0 ? '#EF4444' : '#10B981',
+            bgColor: unpaidBills > 0 ? '#FEE2E2' : '#D1FAE5',
             route: '/(resident)/bills'
         },
         {
             title: 'Open Complaints',
-            value: stats.pendingComplaints,
+            value: pendingComplaints,
             icon: '🛠',
             color: '#F59E0B',
             bgColor: '#FEF3C7',
@@ -107,7 +71,7 @@ export default function ResidentHome() {
         },
         {
             title: 'Vehicles Inside',
-            value: stats.vehiclesInside,
+            value: 0, // Note: vehicle inside count requires vehicleLogs query — tracked via context
             icon: '🚗',
             color: '#3B82F6',
             bgColor: '#DBEAFE',

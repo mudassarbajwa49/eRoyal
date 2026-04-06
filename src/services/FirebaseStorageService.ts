@@ -41,22 +41,8 @@ export const uploadImage = async (
     }
 };
 
-/**
- * Upload multiple images
- */
-export const uploadMultipleImages = async (
-    blobs: Blob[],
-    folder: string = 'images'
-): Promise<{ url: string; fileName: string }[]> => {
-    try {
-        const uploadPromises = blobs.map((blob) => uploadImage(blob, folder));
-        const results = await Promise.all(uploadPromises);
-        return results;
-    } catch (error) {
-        logger.error('Error uploading multiple images:', error);
-        throw error;
-    }
-};
+// NOTE: uploadMultipleImages for URIs (string[]) lives in imageService.ts
+// Do NOT add a Blob-based version here — it caused an API signature conflict (BUG 1 fixed).
 
 /**
  * Upload image from URI

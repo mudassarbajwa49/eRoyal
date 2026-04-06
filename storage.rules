@@ -14,6 +14,17 @@ service firebase.storage {
       // Check custom claims (set via Firebase Admin SDK or Firestore)
       return request.auth.token.role == 'admin';
     }
+
+    function isSecurity() {
+      // 1st: fast path via custom claim
+      // 2nd: fallback — read the Firestore user profile (handles un-refreshed tokens)
+      return isAuthenticated() && (
+        request.auth.token.role == 'security' ||
+        request.auth.token.role == 'Security' ||
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'security' ||
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'Security'
+      );
+    }
     
     function isValidImage() {
       return request.resource.contentType.matches('image/.*');
@@ -193,6 +204,30 @@ service firebase.storage {
       // Only user can delete their own profile pictures
       allow delete: if isAuthenticated() 
                     && request.auth.uid == userId;
+    }
+
+    // ===========================
+    // VEHICLE ENTRY PHOTOS (gate camera)
+    // ===========================
+    // Structure: vehiclePhotos/{logId}.jpg
+    match /vehiclePhotos/{fileName} {
+      // Anyone authenticated can read (admin / security review)
+      allow read: if isAuthenticated();
+      
+      // Security staff OR admin can upload gate entry photos.
+      // Dual-check: custom claim first, then Firestore profile fallback
+      // (mirrors the vehicleLogs Firestore rule to handle un-refreshed tokens)
+      allow create: if isAuthenticated()
+                    && (
+                      isSecurity() || isAdmin() ||
+                      firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'security' ||
+                      firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'Security'
+                    )
+                    && isValidImage()
+                    && isValidSize(5);
+      
+      // No updates or deletes — gate photos are an audit record
+      allow update, delete: if false;
     }
   }
 }

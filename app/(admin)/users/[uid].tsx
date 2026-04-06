@@ -147,28 +147,46 @@ export default function UserDetailScreen() {
         );
 
         // ── 2. Bills ──────────────────────────────────────────────────────────
+        // No orderBy — compound where+orderBy needs a composite index. Sort client-side.
         unsubs.push(
             onSnapshot(
-                query(collection(db, 'bills'), where('residentId', '==', uid), orderBy('createdAt', 'desc')),
-                (snap) => { setBills(snap.docs.map(d => ({ id: d.id, ...d.data() } as Bill))); markReady(); },
+                query(collection(db, 'bills'), where('residentId', '==', uid)),
+                (snap) => {
+                    const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Bill));
+                    list.sort((a: any, b: any) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0));
+                    setBills(list);
+                    markReady();
+                },
                 () => markReady()
             )
         );
 
         // ── 3. Complaints ─────────────────────────────────────────────────────
+        // No orderBy — sort client-side to avoid missing composite index.
         unsubs.push(
             onSnapshot(
-                query(collection(db, 'complaints'), where('residentId', '==', uid), orderBy('createdAt', 'desc')),
-                (snap) => { setComplaints(snap.docs.map(d => ({ id: d.id, ...d.data() } as Complaint))); markReady(); },
+                query(collection(db, 'complaints'), where('residentId', '==', uid)),
+                (snap) => {
+                    const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Complaint));
+                    list.sort((a: any, b: any) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0));
+                    setComplaints(list);
+                    markReady();
+                },
                 () => markReady()
             )
         );
 
         // ── 4. Registered vehicles ────────────────────────────────────────────
+        // No orderBy — sort client-side to avoid missing composite index.
         unsubs.push(
             onSnapshot(
-                query(collection(db, 'registeredVehicles'), where('residentId', '==', uid), orderBy('createdAt', 'desc')),
-                (snap) => { setVehicles(snap.docs.map(d => ({ id: d.id, ...d.data() } as RegisteredVehicle))); markReady(); },
+                query(collection(db, 'registeredVehicles'), where('residentId', '==', uid)),
+                (snap) => {
+                    const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as RegisteredVehicle));
+                    list.sort((a: any, b: any) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0));
+                    setVehicles(list);
+                    markReady();
+                },
                 () => markReady()
             )
         );
@@ -181,6 +199,7 @@ export default function UserDetailScreen() {
                 () => markReady()
             )
         );
+
 
         return () => unsubs.forEach(u => u());
     }, [uid]);
@@ -248,11 +267,11 @@ export default function UserDetailScreen() {
                                 <Text style={styles.statNum}>{bills.length}</Text>
                                 <Text style={styles.statLbl}>Bills</Text>
                             </View>
-                            <View style={styles.statBox}>
-                                <Text style={[styles.statNum, { color: '#DC2626' }]}>
+                            <View style={[styles.statBox, unpaidAmount > 0 && styles.unpaidStatBox]}>
+                                <Text style={[styles.statNum, unpaidAmount > 0 ? { color: '#DC2626' } : { color: '#111827' }]}>
                                     PKR {unpaidAmount.toLocaleString()}
                                 </Text>
-                                <Text style={styles.statLbl}>Unpaid</Text>
+                                <Text style={styles.statLbl}>{unpaidAmount > 0 ? 'UNPAID DUES' : 'NO DUES'}</Text>
                             </View>
                             <View style={styles.statBox}>
                                 <Text style={styles.statNum}>{complaints.length}</Text>
@@ -419,6 +438,7 @@ export default function UserDetailScreen() {
                     </View>
                 )}
 
+
                 {/* For security users — just the profile card is shown */}
                 {!isResident && (
                     <Card style={styles.itemCard}>
@@ -529,6 +549,13 @@ const styles = StyleSheet.create({
         fontSize: 11,
         color: '#6B7280',
         marginTop: 2,
+    },
+    unpaidStatBox: {
+        backgroundColor: '#FEF2F2',
+        borderRadius: 8,
+        paddingVertical: 4,
+        borderWidth: 1,
+        borderColor: '#FEE2E2',
     },
 
     // Pill

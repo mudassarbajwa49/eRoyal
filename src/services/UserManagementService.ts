@@ -1,7 +1,7 @@
 // User Service
 // Manage user profiles and data from role-specific collections
 
-import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { collection, getDocs, orderBy, query, where } from 'firebase/firestore';
 import { db } from '../../firebaseConfig';
 import { UserProfile } from '../types';
 
@@ -47,20 +47,39 @@ export const getAllUsers = async (): Promise<UserProfile[]> => {
  */
 export const getUsersByRole = async (role: 'resident' | 'security' | 'admin'): Promise<UserProfile[]> => {
     try {
-        const collectionName = getCollectionNameByRole(role);
-        console.log(`📁 Fetching users from ${collectionName}...`);
+        console.log(`📁 Fetching ${role}s from users collection...`);
 
+        // Primary: check unified 'users' collection
         const q = query(
-            collection(db, collectionName),
-            orderBy('createdAt', 'desc')
+            collection(db, 'users'),
+            where('role', '==', role)
         );
         const querySnapshot = await getDocs(q);
 
-        const users: UserProfile[] = [];
+        let users: UserProfile[] = [];
         querySnapshot.forEach((doc) => {
             const data = doc.data();
             users.push({ ...data, uid: doc.id } as UserProfile);
         });
+
+        // Sort client-side to avoid complex Firestore indexes
+        users.sort((a: any, b: any) => {
+            const dateA = a.createdAt?.seconds || 0;
+            const dateB = b.createdAt?.seconds || 0;
+            return dateB - dateA;
+        });
+
+        // Fallback: Check legacy role-specific collections if needed
+        if (users.length === 0) {
+            const collectionName = getCollectionNameByRole(role);
+            console.log(`📁 Fallback: Fetching from ${collectionName}...`);
+            const legacyQ = query(collection(db, collectionName), orderBy('createdAt', 'desc'));
+            const legacySnapshot = await getDocs(legacyQ);
+            legacySnapshot.forEach((doc) => {
+                const data = doc.data();
+                users.push({ ...data, uid: doc.id } as UserProfile);
+            });
+        }
 
         console.log(`✅ Found ${users.length} ${role}s`);
         return users;

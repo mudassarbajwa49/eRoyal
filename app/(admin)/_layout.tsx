@@ -75,10 +75,6 @@ export default function AdminLayout() {
                     options={{ title: 'Complaint Details' }}
                 />
                 <Stack.Screen
-                    name="complaints/create"
-                    options={{ title: 'Create Complaint' }}
-                />
-                <Stack.Screen
                     name="marketplace/index"
                     options={{ title: 'Marketplace Management' }}
                 />

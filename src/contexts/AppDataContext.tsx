@@ -44,7 +44,7 @@ import {
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { db } from '../../firebaseConfig';
 import { Announcement } from '../services/announcementService';
-import { Bill, Listing, RegisteredVehicle, VehicleLog } from '../types';
+import { Bill, Complaint, Listing, RegisteredVehicle, VehicleLog } from '../types';
 import { useAuth } from './AuthContext';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -56,6 +56,7 @@ interface AppData {
     approvedListings: Listing[];
     myListings: Listing[];
     announcements: Announcement[];
+    complaints: Complaint[]; // BUG 7 fix: moved complaints from individual screens into context
     /** True only on the very first load before any listener fires */
     initializing: boolean;
 }
@@ -75,6 +76,7 @@ const AppDataContext = createContext<AppDataContextValue>({
     approvedListings: [],
     myListings: [],
     announcements: [],
+    complaints: [],
     initializing: true,
     refresh: () => { },
 });
@@ -99,12 +101,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     const [approvedListings, setApprovedListings] = useState<Listing[]>([]);
     const [myListings, setMyListings] = useState<Listing[]>([]);
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+    const [complaints, setComplaints] = useState<Complaint[]>([]); // BUG 7 fix
     const [initializing, setInitializing] = useState(true);
 
     // Track how many listeners have fired at least once so we can clear the
     // "initializing" flag when all data is ready.
     const readyCount = useRef(0);
-    const TOTAL_LISTENERS = 5; // bills, vehicles, logs, listings×2(merged), announcements
+    const TOTAL_LISTENERS = 6; // bills, vehicles, logs, listings×2(merged), announcements, complaints
     const isFirstUser = useRef<string | null>(null);
 
     const markReady = () => {
@@ -124,6 +127,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
             setApprovedListings([]);
             setMyListings([]);
             setAnnouncements([]);
+            setComplaints([]);
             setInitializing(false); // not initializing — just not applicable
             readyCount.current = 0;
             isFirstUser.current = null;
@@ -139,15 +143,23 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         const unsubs: (() => void)[] = [];
 
         // ── 1. Bills (resident only) – filter Draft/archived in memory ─────────────
+        // NOTE: No orderBy here — compound where+orderBy needs a composite index
+        // that doesn't exist. We sort client-side instead which works without any index.
         const billsQ = query(
             collection(db, 'bills'),
-            where('residentId', '==', uid),
-            orderBy('createdAt', 'desc')
+            where('residentId', '==', uid)
         );
         unsubs.push(
             onSnapshot(billsQ, (snap) => {
                 const all = snap.docs.map(d => ({ id: d.id, ...d.data() } as Bill));
-                setBills(all.filter(b => b.status !== 'Draft' && !b.isArchived));
+                const filtered = all.filter(b => b.status !== 'Draft' && !b.isArchived);
+                // Sort newest first client-side
+                filtered.sort((a: any, b: any) => {
+                    const ta = a.createdAt?.toMillis?.() ?? 0;
+                    const tb = b.createdAt?.toMillis?.() ?? 0;
+                    return tb - ta;
+                });
+                setBills(filtered);
                 markReady();
             }, (err) => {
                 console.error('[AppData] bills listener error:', err);
@@ -207,30 +219,42 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
         const approvedQ = query(
             collection(db, 'listings'),
-            where('status', '==', 'Approved'),
-            orderBy('createdAt', 'desc')
+            where('status', '==', 'Approved')
         );
         unsubs.push(
             onSnapshot(approvedQ, (snap) => {
-                setApprovedListings(snap.docs.map(d => ({ id: d.id, ...d.data() } as Listing)));
+                const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Listing));
+                // Sort client-side
+                list.sort((a: any, b: any) => {
+                    const ta = a.createdAt?.toMillis?.() ?? 0;
+                    const tb = b.createdAt?.toMillis?.() ?? 0;
+                    return tb - ta;
+                });
+                setApprovedListings(list);
                 if (!approvedDone) { approvedDone = true; checkListingsDone(); }
             }, (err) => {
-                console.error('[AppData] approvedListings listener error — check for missing Firestore index:', err);
+                console.error('[AppData] approvedListings listener error:', err);
                 if (!approvedDone) { approvedDone = true; checkListingsDone(); }
             })
         );
 
         const myListingsQ = query(
             collection(db, 'listings'),
-            where('postedBy', '==', uid),
-            orderBy('createdAt', 'desc')
+            where('postedBy', '==', uid)
         );
         unsubs.push(
             onSnapshot(myListingsQ, (snap) => {
-                setMyListings(snap.docs.map(d => ({ id: d.id, ...d.data() } as Listing)));
+                const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Listing));
+                // Sort client-side
+                list.sort((a: any, b: any) => {
+                    const ta = a.createdAt?.toMillis?.() ?? 0;
+                    const tb = b.createdAt?.toMillis?.() ?? 0;
+                    return tb - ta;
+                });
+                setMyListings(list);
                 if (!myDone) { myDone = true; checkListingsDone(); }
             }, (err) => {
-                console.error('[AppData] myListings listener error — check for missing Firestore index:', err);
+                console.error('[AppData] myListings listener error:', err);
                 if (!myDone) { myDone = true; checkListingsDone(); }
             })
         );
@@ -250,6 +274,29 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
             })
         );
 
+        // ── 6. Complaints (resident-scoped) ───────────────────────────────────
+        // BUG 7 fix: moved complaints listener here so home.tsx and other screens
+        // can read from context without creating duplicate onSnapshot listeners.
+        const complaintsQ = query(
+            collection(db, 'complaints'),
+            where('residentId', '==', uid)
+        );
+        unsubs.push(
+            onSnapshot(complaintsQ, (snap) => {
+                const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Complaint));
+                list.sort((a: any, b: any) => {
+                    const ta = a.createdAt?.toMillis?.() ?? 0;
+                    const tb = b.createdAt?.toMillis?.() ?? 0;
+                    return tb - ta;
+                });
+                setComplaints(list);
+                markReady();
+            }, (err) => {
+                console.error('[AppData] complaints listener error:', err);
+                markReady();
+            })
+        );
+
         return () => {
             unsubs.forEach(u => u());
             isFirstUser.current = null;
@@ -261,7 +308,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
     return (
         <AppDataContext.Provider
-            value={{ bills, vehicles, vehicleLogs, approvedListings, myListings, announcements, initializing, refresh }}
+            value={{ bills, vehicles, vehicleLogs, approvedListings, myListings, announcements, complaints, initializing, refresh }}
         >
             {children}
         </AppDataContext.Provider>

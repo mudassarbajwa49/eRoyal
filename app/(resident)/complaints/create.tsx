@@ -1,7 +1,6 @@
 // Create Complaint Screen (Resident)
 // Submit new complaint with optional photo
 
-import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -51,7 +50,7 @@ export default function CreateComplaintScreen() {
         }
 
         const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            mediaTypes: ['images'], // BUG 9 fixed: MediaTypeOptions.Images is deprecated in Expo SDK 51+
             allowsEditing: true,
             aspect: [4, 3],
             quality: 0.8
@@ -74,7 +73,7 @@ export default function CreateComplaintScreen() {
             },
             userProfile.uid,
             userProfile.name,
-            userProfile.houseNo!
+            userProfile.houseNo ?? '' // BUG 2 fixed: safe fallback instead of null assertion
         );
 
         setLoading(false);
@@ -113,16 +112,24 @@ export default function CreateComplaintScreen() {
 
                         <View style={styles.inputContainer}>
                             <Text style={styles.label}>Category *</Text>
-                            <View style={styles.pickerContainer}>
-                                <Picker
-                                    selectedValue={formData.category}
-                                    onValueChange={(value) => setFormData({ ...formData, category: value as ComplaintCategory })}
-                                    style={styles.picker}
-                                >
-                                    {categories.map(cat => (
-                                        <Picker.Item key={cat} label={cat} value={cat} />
-                                    ))}
-                                </Picker>
+                            <View style={styles.categoryButtons}>
+                                {categories.map(cat => (
+                                    <TouchableOpacity
+                                        key={cat}
+                                        style={[
+                                            styles.categoryButton,
+                                            formData.category === cat && styles.categoryButtonActive
+                                        ]}
+                                        onPress={() => setFormData({ ...formData, category: cat })}
+                                    >
+                                        <Text style={[
+                                            styles.categoryButtonText,
+                                            formData.category === cat && styles.categoryButtonTextActive
+                                        ]}>
+                                            {cat}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
                             </View>
                         </View>
 
@@ -197,14 +204,32 @@ const styles = StyleSheet.create({
         color: '#333',
         marginBottom: 8
     },
-    pickerContainer: {
+    categoryButtons: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    categoryButton: {
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 20,
+        backgroundColor: '#FFFFFF',
         borderWidth: 1,
         borderColor: '#DDD',
-        borderRadius: 8,
-        backgroundColor: '#FFFFFF'
+        marginBottom: 8,
     },
-    picker: {
-        height: 48
+    categoryButtonActive: {
+        backgroundColor: '#007AFF',
+        borderColor: '#007AFF',
+    },
+    categoryButtonText: {
+        fontSize: 14,
+        color: '#666',
+        fontWeight: '500',
+    },
+    categoryButtonTextActive: {
+        color: '#FFFFFF',
+        fontWeight: '600',
     },
     photoSection: {
         marginBottom: 16

@@ -91,6 +91,8 @@ export interface Complaint {
     chargeAmount?: number | null; // Amount to add to bill
     addedToBill?: boolean; // Whether already added to bill
     billId?: string | null; // Which bill it was added to
+    // BUG 10 fixed: priority field was written to Firestore by createComplaint but missing from type
+    priority?: 'low' | 'medium' | 'high';
 }
 
 // ==========================================
@@ -141,6 +143,8 @@ export interface VehicleLog {
     purpose: string | null;
     loggedBy: string;
     loggedByName: string;
+    photoUrl?: string | null; // URL of the gate camera photo captured at entry
+    exitPhotoUrl?: string | null; // URL of the gate camera photo captured at exit
 }
 
 export interface RegisteredVehicle {

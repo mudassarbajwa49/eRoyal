@@ -4,6 +4,7 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
+    Alert,
     Image,
     Modal,
     Pressable,
@@ -50,68 +51,111 @@ export default function AdminBillDetailScreen() {
     const handleApprove = async () => {
         if (!bill?.id || !currentUser?.uid) return;
         console.log('Approve clicked for bill:', bill.id, 'by admin:', currentUser.uid);
-        const confirmed = window.confirm(
-            `Approve payment from ${bill.residentName} for ${bill.month}?\n\nThis will mark the bill as Paid.`
+
+        Alert.alert(
+            'Approve Payment',
+            `Approve payment from ${bill.residentName} for ${bill.month}?\n\nThis will mark the bill as Paid.`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Approve',
+                    onPress: async () => {
+                        setApproving(true);
+                        try {
+                            const result = await verifyPayment(bill.id!, currentUser.uid!);
+                            if (result.success) {
+                                Alert.alert('Success', '✅ Payment approved and bill marked as Paid.');
+                                loadBill();
+                            } else {
+                                Alert.alert('Error', result.error || 'Failed to approve payment.');
+                            }
+                        } catch (e) {
+                            Alert.alert('Error', 'An unexpected error occurred.');
+                        } finally {
+                            setApproving(false);
+                        }
+                    }
+                }
+            ]
         );
-        if (!confirmed) return;
-        setApproving(true);
-        try {
-            const result = await verifyPayment(bill.id!, currentUser.uid!);
-            if (result.success) {
-                window.alert('✅ Payment approved and bill marked as Paid.');
-                loadBill();
-            } else {
-                window.alert('Error: ' + (result.error || 'Failed to approve payment.'));
-            }
-        } catch (e) {
-            window.alert('Error: An unexpected error occurred.');
-        } finally {
-            setApproving(false);
-        }
     };
 
     // ── Reject payment ───────────────────────────────────────────
     const handleReject = async () => {
         if (!bill?.id) return;
-        const confirmed = window.confirm(
-            `Reject the payment proof from ${bill.residentName}?\n\nThe bill will revert to Unpaid and the resident must re-submit.`
+
+        Alert.alert(
+            'Reject Payment Proof',
+            `Reject the payment proof from ${bill.residentName}?\n\nThe bill will revert to Unpaid and the resident must re-submit.`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Reject',
+                    style: 'destructive',
+                    onPress: async () => {
+                        setRejecting(true);
+                        try {
+                            const result = await rejectPaymentProof(bill.id!);
+                            if (result.success) {
+                                Alert.alert('Proof Rejected', '❌ Payment proof rejected. Resident must re-submit.');
+                                loadBill();
+                            } else {
+                                Alert.alert('Error', result.error || 'Failed to reject payment.');
+                            }
+                        } catch (e) {
+                            Alert.alert('Error', 'An unexpected error occurred.');
+                        } finally {
+                            setRejecting(false);
+                        }
+                    }
+                }
+            ]
         );
-        if (!confirmed) return;
-        setRejecting(true);
-        try {
-            const result = await rejectPaymentProof(bill.id!);
-            if (result.success) {
-                window.alert('❌ Payment proof rejected. Resident must re-submit.');
-                loadBill();
-            } else {
-                window.alert('Error: ' + (result.error || 'Failed to reject payment.'));
-            }
-        } catch (e) {
-            window.alert('Error: An unexpected error occurred.');
-        } finally {
-            setRejecting(false);
-        }
     };
 
     // ── Send notification to resident ────────────────────────────
     const handleSendBill = async () => {
         if (!bill?.id || !userProfile?.uid) return;
-        const confirmed = window.confirm(`Send bill notification to ${bill.residentName}?`);
-        if (!confirmed) return;
-        try {
-            const { sendBillToResident } = await import('../../../src/services/MonthlyBillingService');
-            const result = await sendBillToResident(bill.id!, userProfile.uid);
-            window.alert(result.success ? '✅ Bill sent to resident.' : 'Error: ' + (result.error || 'Failed.'));
-            if (result.success) loadBill();
-        } catch {
-            window.alert('Error: An unexpected error occurred.');
-        }
+
+        Alert.alert(
+            'Send Bill',
+            `Send bill notification to ${bill.residentName}?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Send',
+                    onPress: async () => {
+                        try {
+                            const { sendBillToResident } = await import('../../../src/services/MonthlyBillingService');
+                            const result = await sendBillToResident(bill.id!, userProfile.uid);
+                            if (result.success) {
+                                Alert.alert('Success', '✅ Bill sent to resident.');
+                                loadBill();
+                            } else {
+                                Alert.alert('Error', result.error || 'Failed.');
+                            }
+                        } catch {
+                            Alert.alert('Error', 'An unexpected error occurred.');
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     const formatDate = (ts: any): string => {
         if (!ts) return 'N/A';
-        const d = ts.toDate ? ts.toDate() : new Date(ts);
-        return d.toLocaleDateString();
+        try {
+            const d = ts.toDate ? ts.toDate() : new Date(ts);
+            return d.toLocaleDateString();
+        } catch {
+            return 'N/A';
+        }
+    };
+
+    const formatCurrency = (val: any): string => {
+        const num = Number(val) || 0;
+        return num.toLocaleString();
     };
 
     // ── Guard states ─────────────────────────────────────────────
@@ -163,7 +207,7 @@ export default function AdminBillDetailScreen() {
 
                         <View style={styles.totalAmount}>
                             <Text style={styles.totalLabel}>Total Amount</Text>
-                            <Text style={styles.totalValue}>Rs. {bill.amount.toLocaleString()}</Text>
+                            <Text style={styles.totalValue}>Rs. {formatCurrency(bill.amount)}</Text>
                         </View>
 
                         <View style={styles.infoRow}>
@@ -177,45 +221,47 @@ export default function AdminBillDetailScreen() {
                     </Card>
 
                     {/* ── Charges Breakdown ── */}
-                    <Card>
-                        <Text style={styles.sectionTitle}>📊 Charges Breakdown</Text>
+                    {bill.breakdown && (
+                        <Card>
+                            <Text style={styles.sectionTitle}>📊 Charges Breakdown</Text>
 
-                        <View style={styles.chargeRow}>
-                            <Text style={styles.chargeLabel}>Base Charges (Maintenance)</Text>
-                            <Text style={styles.chargeValue}>Rs. {bill.breakdown.baseCharges.toLocaleString()}</Text>
-                        </View>
-
-                        {bill.breakdown.previousDues > 0 && (
                             <View style={styles.chargeRow}>
-                                <Text style={styles.chargeLabel}>Previous Dues</Text>
-                                <Text style={[styles.chargeValue, styles.duesText]}>
-                                    Rs. {bill.breakdown.previousDues.toLocaleString()}
-                                </Text>
+                                <Text style={styles.chargeLabel}>Base Charges (Maintenance)</Text>
+                                <Text style={styles.chargeValue}>Rs. {formatCurrency(bill.breakdown.baseCharges)}</Text>
                             </View>
-                        )}
 
-                        {bill.breakdown.complaintCharges && bill.breakdown.complaintCharges.length > 0 && (
-                            <>
-                                <View style={styles.divider} />
-                                <Text style={styles.subsectionTitle}>Complaint Charges</Text>
-                                {bill.breakdown.complaintCharges.map((charge, i) => (
-                                    <View key={i} style={styles.complaintCharge}>
-                                        <View style={styles.complaintInfo}>
-                                            <Text style={styles.complaintNumber}>{charge.complaintNumber}</Text>
-                                            <Text style={styles.complaintDesc}>{charge.description}</Text>
+                            {Number(bill.breakdown.previousDues || 0) > 0 && (
+                                <View style={styles.chargeRow}>
+                                    <Text style={styles.chargeLabel}>Previous Dues</Text>
+                                    <Text style={[styles.chargeValue, styles.duesText]}>
+                                        Rs. {formatCurrency(bill.breakdown.previousDues)}
+                                    </Text>
+                                </View>
+                            )}
+
+                            {Array.isArray(bill.breakdown.complaintCharges) && bill.breakdown.complaintCharges.length > 0 && (
+                                <>
+                                    <View style={styles.divider} />
+                                    <Text style={styles.subsectionTitle}>Complaint Charges</Text>
+                                    {bill.breakdown.complaintCharges.map((charge, i) => (
+                                        <View key={i} style={styles.complaintCharge}>
+                                            <View style={styles.complaintInfo}>
+                                                <Text style={styles.complaintNumber}>{charge.complaintNumber}</Text>
+                                                <Text style={styles.complaintDesc}>{charge.description}</Text>
+                                            </View>
+                                            <Text style={styles.complaintAmount}>Rs. {formatCurrency(charge.amount)}</Text>
                                         </View>
-                                        <Text style={styles.complaintAmount}>Rs. {charge.amount.toLocaleString()}</Text>
-                                    </View>
-                                ))}
-                            </>
-                        )}
+                                    ))}
+                                </>
+                            )}
 
-                        <View style={styles.divider} />
-                        <View style={styles.totalRow}>
-                            <Text style={styles.totalRowLabel}>Total</Text>
-                            <Text style={styles.totalRowValue}>Rs. {bill.amount.toLocaleString()}</Text>
-                        </View>
-                    </Card>
+                            <View style={styles.divider} />
+                            <View style={styles.totalRow}>
+                                <Text style={styles.totalRowLabel}>Total</Text>
+                                <Text style={styles.totalRowValue}>Rs. {formatCurrency(bill.amount)}</Text>
+                            </View>
+                        </Card>
+                    )}
 
                     {/* ── Payment Proof Card (shown when proof exists) ── */}
                     {bill.proofUrl && (
@@ -280,15 +326,25 @@ export default function AdminBillDetailScreen() {
                     )}
 
                     {/* ── Other Actions ── */}
-                    <Card>
-                        <Button
-                            title="📧 Send Bill Notification"
-                            onPress={handleSendBill}
-                            variant="primary"
-                            fullWidth
-                            style={styles.actionButton}
-                        />
-                    </Card>
+                    {bill.status !== 'Paid' && (
+                        <Card>
+                            <Button
+                                title="💵 Mark as Paid (Manual/Cash)"
+                                onPress={handleApprove}
+                                variant="primary"
+                                fullWidth
+                                loading={approving}
+                                style={{ marginBottom: 12, backgroundColor: '#10b981' }}
+                            />
+                            <Button
+                                title="📧 Send Bill Notification"
+                                onPress={handleSendBill}
+                                variant="secondary"
+                                fullWidth
+                                style={styles.actionButton}
+                            />
+                        </Card>
+                    )}
 
                 </View>
             </ScrollView>

@@ -38,8 +38,9 @@ interface AdminData {
     /** All listings — split into status buckets below */
     allListings: Listing[];
     pendingListings: Listing[];
-    approvedListings: Listing[];
+    liveListings: Listing[];
     rejectedListings: Listing[];
+    inactiveListings: Listing[];
     vehicleLogs: VehicleLog[];
     /** All registered vehicles in the society */
     registeredVehicles: RegisteredVehicle[];
@@ -60,8 +61,9 @@ const AdminDataContext = createContext<AdminDataContextValue>({
     complaints: [],
     allListings: [],
     pendingListings: [],
-    approvedListings: [],
+    liveListings: [],
     rejectedListings: [],
+    inactiveListings: [],
     vehicleLogs: [],
     registeredVehicles: [],
     initializing: true,
@@ -129,8 +131,8 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
         unsubs.push(
             onSnapshot(billsQ, (snap) => {
                 const allBills = snap.docs.map(d => ({ id: d.id, ...d.data() } as Bill));
-                // Filter client-side: hide Draft and archived bills
-                setBills(allBills.filter(b => b.status !== 'Draft' && !b.isArchived));
+                // Filter client-side: hide archived bills but show Drafts
+                setBills(allBills.filter(b => !b.isArchived));
                 markReady();
             }, (err) => {
                 console.error('[AdminData] bills listener error:', err);
@@ -209,12 +211,16 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
         () => allListings.filter(l => l.status === 'Pending'),
         [allListings]
     );
-    const approvedListings = useMemo(
+    const liveListings = useMemo(
         () => allListings.filter(l => l.status === 'Approved'),
         [allListings]
     );
     const rejectedListings = useMemo(
         () => allListings.filter(l => l.status === 'Rejected'),
+        [allListings]
+    );
+    const inactiveListings = useMemo(
+        () => allListings.filter(l => l.status === 'Sold' || l.status === 'Inactive'),
         [allListings]
     );
 
@@ -226,8 +232,9 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
             complaints,
             allListings,
             pendingListings,
-            approvedListings,
+            liveListings,
             rejectedListings,
+            inactiveListings,
             vehicleLogs,
             registeredVehicles,
             initializing,

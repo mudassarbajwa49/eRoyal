@@ -1,7 +1,7 @@
 // Listing Service (Marketplace)
 // Business logic for property marketplace with admin approval
 
-import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDocs, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
 import { db } from '../../firebaseConfig';
 import { ApiResponse, CreateListingFormData, Listing } from '../types';
 import { STORAGE_FOLDERS, uploadMultipleImages } from './imageService';
@@ -102,15 +102,20 @@ export const getApprovedListings = async (): Promise<Listing[]> => {
     try {
         const listingsQuery = query(
             collection(db, 'listings'),
-            where('status', '==', 'Approved'),
-            orderBy('createdAt', 'desc')
+            where('status', '==', 'Approved')
         );
 
         const snapshot = await getDocs(listingsQuery);
-        return snapshot.docs.map(doc => ({
+        const list = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
         } as Listing));
+
+        return list.sort((a: any, b: any) => {
+            const ta = a.createdAt?.toMillis?.() ?? 0;
+            const tb = b.createdAt?.toMillis?.() ?? 0;
+            return tb - ta;
+        });
     } catch (error) {
         console.error('Error fetching approved listings:', error);
         return [];
@@ -124,15 +129,20 @@ export const getRejectedListings = async (): Promise<Listing[]> => {
     try {
         const listingsQuery = query(
             collection(db, 'listings'),
-            where('status', '==', 'Rejected'),
-            orderBy('createdAt', 'desc')
+            where('status', '==', 'Rejected')
         );
 
         const snapshot = await getDocs(listingsQuery);
-        return snapshot.docs.map(doc => ({
+        const list = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
         } as Listing));
+
+        return list.sort((a: any, b: any) => {
+            const ta = a.createdAt?.toMillis?.() ?? 0;
+            const tb = b.createdAt?.toMillis?.() ?? 0;
+            return tb - ta;
+        });
     } catch (error) {
         console.error('Error fetching rejected listings:', error);
         return [];
@@ -146,15 +156,20 @@ export const getPendingListings = async (): Promise<Listing[]> => {
     try {
         const listingsQuery = query(
             collection(db, 'listings'),
-            where('status', '==', 'Pending'),
-            orderBy('createdAt', 'desc')
+            where('status', '==', 'Pending')
         );
 
         const snapshot = await getDocs(listingsQuery);
-        return snapshot.docs.map(doc => ({
+        const list = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
         } as Listing));
+
+        return list.sort((a: any, b: any) => {
+            const ta = a.createdAt?.toMillis?.() ?? 0;
+            const tb = b.createdAt?.toMillis?.() ?? 0;
+            return tb - ta;
+        });
     } catch (error) {
         console.error('Error fetching pending listings:', error);
         return [];
@@ -168,15 +183,20 @@ export const getMyListings = async (residentId: string): Promise<Listing[]> => {
     try {
         const listingsQuery = query(
             collection(db, 'listings'),
-            where('postedBy', '==', residentId),
-            orderBy('createdAt', 'desc')
+            where('postedBy', '==', residentId)
         );
 
         const snapshot = await getDocs(listingsQuery);
-        return snapshot.docs.map(doc => ({
+        const list = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
         } as Listing));
+
+        return list.sort((a: any, b: any) => {
+            const ta = a.createdAt?.toMillis?.() ?? 0;
+            const tb = b.createdAt?.toMillis?.() ?? 0;
+            return tb - ta;
+        });
     } catch (error) {
         console.error('Error fetching my listings:', error);
         return [];

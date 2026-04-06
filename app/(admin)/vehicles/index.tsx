@@ -15,6 +15,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
     FlatList,
+    Image,
     Modal,
     Pressable,
     RefreshControl,
@@ -306,6 +307,8 @@ const dfStyles = StyleSheet.create({
 
 function VehicleCard({ log, showExit = true }: { log: VehicleLog; showExit?: boolean }) {
     const isResident = log.type === 'Resident';
+    const [photoVisible, setPhotoVisible] = useState<'entry' | 'exit' | null>(null);
+
     return (
         <Card style={styles.card}>
             <View style={styles.cardHeader}>
@@ -341,6 +344,50 @@ function VehicleCard({ log, showExit = true }: { log: VehicleLog; showExit?: boo
                     </View>
                 ) : null}
             </View>
+
+            {/* Gate camera photos */}
+            {(log.photoUrl || log.exitPhotoUrl) && (
+                <View style={[styles.photoContainer, log.photoUrl && log.exitPhotoUrl ? styles.photoRow : null]}>
+                    {/* ENTRY PHOTO */}
+                    {log.photoUrl && (
+                        <View style={log.photoUrl && log.exitPhotoUrl ? styles.halfPhoto : styles.fullPhoto}>
+                            <TouchableOpacity onPress={() => setPhotoVisible('entry')} activeOpacity={0.85}>
+                                <Image source={{ uri: log.photoUrl }} style={styles.photoThumb} resizeMode="cover" />
+                                <Text style={styles.photoHint}>📥 Entry</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
+                    {/* EXIT PHOTO */}
+                    {log.exitPhotoUrl && (
+                        <View style={log.photoUrl && log.exitPhotoUrl ? styles.halfPhoto : styles.fullPhoto}>
+                            <TouchableOpacity onPress={() => setPhotoVisible('exit')} activeOpacity={0.85}>
+                                <Image source={{ uri: log.exitPhotoUrl }} style={styles.photoThumb} resizeMode="cover" />
+                                <Text style={styles.photoHint}>� Exit</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+                </View>
+            )}
+
+            {/* Full-screen photo modal */}
+            <Modal
+                visible={photoVisible !== null}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setPhotoVisible(null)}
+            >
+                <Pressable style={styles.photoModal} onPress={() => setPhotoVisible(null)}>
+                    {photoVisible === 'entry' && log.photoUrl && (
+                        <Image source={{ uri: log.photoUrl }} style={styles.photoFull} resizeMode="contain" />
+                    )}
+                    {photoVisible === 'exit' && log.exitPhotoUrl && (
+                        <Image source={{ uri: log.exitPhotoUrl }} style={styles.photoFull} resizeMode="contain" />
+                    )}
+                    <Text style={styles.photoModalHint}>Tap anywhere to close</Text>
+                </Pressable>
+            </Modal>
+
             <Text style={styles.loggedBy}>Logged by: {log.loggedByName}</Text>
         </Card>
     );
@@ -759,4 +806,40 @@ const styles = StyleSheet.create({
 
     // Empty
     empty: { textAlign: 'center', color: '#9CA3AF', paddingVertical: 40, fontSize: 14 },
+
+    // Gate photo thumbnails + full-screen modal
+    photoContainer: { marginTop: 10 },
+    photoRow: { flexDirection: 'row', gap: 10 },
+    fullPhoto: { width: '100%' },
+    halfPhoto: { flex: 1 },
+    photoThumb: {
+        width: '100%',
+        height: 120,
+        borderRadius: 10,
+        backgroundColor: '#E5E7EB',
+    },
+    photoHint: {
+        fontSize: 11,
+        color: '#6B7280',
+        textAlign: 'center',
+        marginTop: 6,
+        marginBottom: 4,
+        fontWeight: '600'
+    },
+    photoModal: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.92)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    photoFull: {
+        width: '95%',
+        height: '75%',
+        borderRadius: 12,
+    },
+    photoModalHint: {
+        color: 'rgba(255,255,255,0.5)',
+        fontSize: 12,
+        marginTop: 16,
+    },
 });

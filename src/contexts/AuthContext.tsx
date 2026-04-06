@@ -28,7 +28,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (userDoc.exists()) {
                 const userData = userDoc.data() as User;
                 logger.success('User profile found in users collection (fast path)');
-                return userData;
+                return { ...userData, uid: userDoc.id };
             }
 
             // Fallback: If not in 'users', check role-specific collections
@@ -42,7 +42,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 if (roleDoc.exists()) {
                     const userData = roleDoc.data() as User;
                     logger.success(`User profile found in ${collectionName} collection (fallback)`);
-                    return userData;
+                    return { ...userData, uid: roleDoc.id };
                 }
             }
 

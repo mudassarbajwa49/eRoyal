@@ -65,11 +65,8 @@ export default function BillsIndex() {
 
     const keyExtractor = useCallback((item: Bill) => item.id!, []);
 
-    const getItemLayout = useCallback((_data: any, index: number) => ({
-        length: 180,
-        offset: 180 * index,
-        index,
-    }), []);
+    // BUG 15 fixed: removed getItemLayout with hardcoded height 180 — bill cards vary in height
+    // depending on complaint charges and breakdown items, causing scroll glitches
 
 
     return (
@@ -147,7 +144,6 @@ export default function BillsIndex() {
                 data={filteredBills}
                 renderItem={renderBill}
                 keyExtractor={keyExtractor}
-                getItemLayout={getItemLayout}
                 contentContainerStyle={[styles.list, { padding: spacing.lg }]}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 ListEmptyComponent={

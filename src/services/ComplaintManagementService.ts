@@ -188,6 +188,8 @@ export const updateComplaintStatus = async (
             resolutionNotes: adminNotes || null,
             resolvedBy: adminUid,
             updatedAt: serverTimestamp(),
+            // BUG 4 fixed: set resolvedAt timestamp when resolving a complaint
+            ...(status === 'Resolved' ? { resolvedAt: serverTimestamp() } : { resolvedAt: null }),
         });
 
         return {

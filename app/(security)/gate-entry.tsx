@@ -7,6 +7,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Alert,
+    Image,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -21,9 +22,9 @@ import { Input } from '../../src/components/common/Input';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useSecurityData } from '../../src/contexts/SecurityDataContext';
 
-import { logVehicleEntry, logVehicleExit } from '../../src/services/VehicleEntryLogService';
-import { detectLicensePlate } from '../../src/services/ocrService';
-import { normalizeVehicleNumber } from '../../src/services/vehicleRegistrationService';
+import { logVehicleEntry, logVehicleExit, uploadEntryPhoto } from '../../src/services/VehicleEntryLogService';
+// import { detectLicensePlate } from '../../src/services/ocrService'; // OCR disabled — re-enable when Vision API is configured
+// import { normalizeVehicleNumber } from '../../src/services/vehicleRegistrationService'; // OCR disabled
 import { RegisteredVehicle, VehicleLog } from '../../src/types';
 
 type TabType = 'resident' | 'visitor' | 'exit';
@@ -38,6 +39,146 @@ function useDebounce<T>(value: T, delay: number): T {
     return debouncedValue;
 }
 
+// ─── CameraSection ────────────────────────────────────────────────────────────
+// Defined OUTSIDE the main screen component so its identity is stable across
+// re-renders. Defining it inside would cause React to see a brand-new component
+// type on every keystroke, unmounting + remounting CameraView → causing blink.
+
+interface CameraSectionProps {
+    accentColor: string;
+    permission: { granted: boolean } | null;
+    requestPermission: () => void;
+    cameraRef: React.RefObject<CameraView | null>;
+    zoom: number;
+    setZoom: React.Dispatch<React.SetStateAction<number>>;
+    capturedUri: string | null;
+    setCapturedUri: React.Dispatch<React.SetStateAction<string | null>>;
+    capturing: boolean;
+    onCapture: () => void;
+}
+
+function CameraSection({
+    accentColor, permission, requestPermission, cameraRef,
+    zoom, setZoom, capturedUri, setCapturedUri, capturing, onCapture,
+}: CameraSectionProps) {
+    if (!permission) {
+        return (
+            <View style={styles.cameraContainer}>
+                <Text style={styles.cameraStatusText}>Loading camera...</Text>
+            </View>
+        );
+    }
+
+    if (!permission.granted) {
+        return (
+            <View style={[styles.cameraContainer, { borderColor: accentColor + '55' }]}>
+                <Text style={styles.cameraIcon}>📷</Text>
+                <Text style={styles.cameraText}>Camera permission required</Text>
+                <TouchableOpacity
+                    style={[styles.permissionButton, { backgroundColor: accentColor }]}
+                    onPress={requestPermission}
+                >
+                    <Text style={styles.permissionButtonText}>Grant Camera Access</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
+    // Preview mode — captured photo shown with Retake / Use This
+    if (capturedUri) {
+        return (
+            <View style={[styles.cameraContainer, { borderColor: accentColor + '99' }]}>
+                <Image source={{ uri: capturedUri }} style={styles.camera} resizeMode="cover" />
+                <View style={styles.previewOverlay}>
+                    <View style={[styles.previewBadge, { backgroundColor: accentColor + 'dd' }]}>
+                        <Text style={styles.previewBadgeText}>📸 CAPTURED</Text>
+                    </View>
+                    <View style={styles.previewActions}>
+                        <TouchableOpacity
+                            style={styles.retakeButton}
+                            onPress={() => setCapturedUri(null)}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={styles.retakeText}>🔁 Retake</Text>
+                        </TouchableOpacity>
+                        <View style={[styles.useThisButton, { backgroundColor: accentColor }]}>
+                            <Text style={styles.useThisText}>✅ Photo saved with entry</Text>
+                        </View>
+                    </View>
+                </View>
+            </View>
+        );
+    }
+
+    // Live mode — viewfinder + zoom + capture button
+    return (
+        <View style={[styles.cameraContainer, { borderColor: accentColor + '44' }]}>
+            <CameraView
+                ref={cameraRef as any}
+                style={styles.camera}
+                facing="back"
+                autofocus="on"
+                zoom={zoom}
+            />
+
+            {/* LIVE badge */}
+            <View style={styles.cameraOverlay} pointerEvents="none">
+                <View style={[styles.liveBadge, { backgroundColor: accentColor + 'cc' }]}>
+                    <View style={styles.liveDot} />
+                    <Text style={styles.liveBadgeText}>LIVE</Text>
+                </View>
+            </View>
+
+            {/* Bottom bar: zoom + capture */}
+            <View style={styles.cameraControls}>
+                <View style={styles.zoomRow}>
+                    <TouchableOpacity
+                        style={styles.zoomBtn}
+                        onPress={() => setZoom(z => Math.max(0, parseFloat((z - 0.1).toFixed(1))))}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={styles.zoomBtnText}>−</Text>
+                    </TouchableOpacity>
+
+                    <View style={styles.zoomTrack}>
+                        {[0, 0.25, 0.5, 0.75, 1].map((step) => (
+                            <TouchableOpacity
+                                key={step}
+                                style={[styles.zoomStep, zoom >= step && { backgroundColor: accentColor }]}
+                                onPress={() => setZoom(step)}
+                            />
+                        ))}
+                    </View>
+
+                    <TouchableOpacity
+                        style={styles.zoomBtn}
+                        onPress={() => setZoom(z => Math.min(1, parseFloat((z + 0.1).toFixed(1))))}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={styles.zoomBtnText}>+</Text>
+                    </TouchableOpacity>
+
+                    <Text style={[styles.zoomLabel, { color: accentColor }]}>
+                        {zoom === 0 ? '1×' : `${(1 + zoom * 9).toFixed(1)}×`}
+                    </Text>
+                </View>
+
+                <TouchableOpacity
+                    style={[styles.captureButton, { backgroundColor: accentColor }, capturing && styles.captureButtonDisabled]}
+                    onPress={onCapture}
+                    activeOpacity={0.8}
+                    disabled={capturing}
+                >
+                    <Text style={styles.captureButtonText}>
+                        {capturing ? '⏳  Capturing...' : '📸  Capture Photo'}
+                    </Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 export default function GateEntryScreen() {
     const { userProfile } = useAuth();
     // Live data from SecurityDataContext — onSnapshot keeps these current automatically
@@ -69,8 +210,13 @@ export default function GateEntryScreen() {
     const [exitLoading, setExitLoading] = useState(false);
     const [exitError, setExitError] = useState('');
 
-    // ===== OCR SCAN STATE =====
-    const [scanning, setScanning] = useState(false);
+    // ===== CAMERA CAPTURE STATE =====
+    const [capturing, setCapturing] = useState(false);
+    const [capturedUri, setCapturedUri] = useState<string | null>(null);
+    const [zoom, setZoom] = useState(0); // 0 = no zoom, 1 = max zoom
+
+    // ===== OCR SCAN STATE (disabled — uncomment when Vision API is active) =====
+    // const [scanning, setScanning] = useState(false);
 
     // ===== SUCCESS STATE =====
     const [showSuccess, setShowSuccess] = useState(false);
@@ -138,6 +284,7 @@ export default function GateEntryScreen() {
         setResidentVehicleNo('');
         setRegisteredVehicle(null);
         setResidentError('');
+        setCapturedUri(null);
     }, []);
 
     const resetVisitorForm = useCallback(() => {
@@ -146,12 +293,14 @@ export default function GateEntryScreen() {
         setVisitorPurpose('');
         setVisitorHouseNo('');
         setVisitorRegisteredVehicle(null);
+        setCapturedUri(null);
     }, []);
 
     const resetExitForm = useCallback(() => {
         setExitVehicleNo('');
         setActiveVehicle(null);
         setExitError('');
+        setCapturedUri(null);
     }, []);
 
     // Show success animation
@@ -163,152 +312,122 @@ export default function GateEntryScreen() {
         }, 1500);
     };
 
-    // ===== CAMERA SCAN LOGIC =====
-
-    // Fill whichever tab is active with a detected/typed plate number.
-    const fillPlate = (normalized: string) => {
-        if (activeTab === 'resident') {
-            setResidentVehicleNo(normalized);
-            setResidentError('');
-            setRegisteredVehicle(null);
-        } else if (activeTab === 'visitor') {
-            setVisitorVehicleNo(normalized);
-            setVisitorRegisteredVehicle(null);
-        } else {
-            setExitVehicleNo(normalized);
-            setExitError('');
-            setActiveVehicle(null);
-        }
-    };
-
-    // Manual fallback — cross-platform (Alert.prompt is iOS-only).
-    const promptManual = () => {
-        if (Platform.OS === 'ios') {
-            Alert.prompt(
-                '✏️ Enter License Plate',
-                'Type the plate number (e.g. LEA-1234)',
-                (text) => {
-                    if (!text || !text.trim()) return;
-                    fillPlate(normalizeVehicleNumber(text.trim().toUpperCase()));
-                },
-                'plain-text',
-                '',
-                'default'
-            );
-        } else {
-            // Android / Web: plate field is visible on screen — just tell guard to type it.
-            Alert.alert(
-                '📷 OCR could not read the plate',
-                'Please type the license plate number in the field below.',
-                [{ text: 'OK' }]
-            );
-        }
-    };
-
-    // Primary handler — capture photo → OCR → auto-fill or fall back to manual.
-    const handleOcrScan = async () => {
-        if (!cameraRef.current || scanning) return;
-        setScanning(true);
+    // ===== CAMERA CAPTURE HANDLER =====
+    const handleCapture = async () => {
+        if (!cameraRef.current || capturing) return;
+        setCapturing(true);
         try {
             const photo = await cameraRef.current.takePictureAsync({
                 quality: 0.85,
-                skipProcessing: true,
+                skipProcessing: false, // keep orientation correct
             });
-            if (!photo?.uri) throw new Error('No photo captured');
-
-            const plate = await detectLicensePlate(photo.uri);
-
-            if (plate) {
-                fillPlate(normalizeVehicleNumber(plate));
-            } else {
-                // OCR found nothing — let the guard type it manually
-                promptManual();
+            if (photo?.uri) {
+                setCapturedUri(photo.uri);
             }
         } catch (err) {
-            console.warn('[OCR] scan failed, falling back to manual:', err);
-            promptManual();
+            console.warn('[Camera] capture failed:', err);
         } finally {
-            setScanning(false);
+            setCapturing(false);
         }
     };
 
-    // ===== REUSABLE CAMERA SECTION =====
-    const CameraSection = ({ accentColor }: { accentColor: string }) => {
-        if (!permission) {
-            // Permissions still loading
-            return (
-                <View style={[styles.cameraContainer, { borderColor: accentColor + '55' }]}>
-                    <Text style={styles.cameraStatusText}>Loading camera...</Text>
-                </View>
-            );
-        }
+    // ===== CAMERA SCAN LOGIC (OCR disabled — re-enable when Vision API is configured) =====
 
-        if (!permission.granted) {
-            return (
-                <View style={[styles.cameraContainer, { borderColor: accentColor + '55' }]}>
-                    <Text style={styles.cameraIcon}>📷</Text>
-                    <Text style={styles.cameraText}>Camera permission required</Text>
-                    <TouchableOpacity style={[styles.permissionButton, { backgroundColor: accentColor }]} onPress={requestPermission}>
-                        <Text style={styles.permissionButtonText}>Grant Camera Access</Text>
-                    </TouchableOpacity>
-                </View>
-            );
-        }
+    // Fill whichever tab is active with a detected/typed plate number.
+    // const fillPlate = (normalized: string) => {
+    //     if (activeTab === 'resident') {
+    //         setResidentVehicleNo(normalized);
+    //         setResidentError('');
+    //         setRegisteredVehicle(null);
+    //     } else if (activeTab === 'visitor') {
+    //         setVisitorVehicleNo(normalized);
+    //         setVisitorRegisteredVehicle(null);
+    //     } else {
+    //         setExitVehicleNo(normalized);
+    //         setExitError('');
+    //         setActiveVehicle(null);
+    //     }
+    // };
 
-        return (
-            <View style={[styles.cameraContainer, { borderColor: accentColor + '55' }]}>
-                {/* Live camera feed – no children allowed by expo-camera */}
-                <CameraView
-                    ref={cameraRef}
-                    style={styles.camera}
-                    facing="back"
-                />
+    // Manual fallback — cross-platform (Alert.prompt is iOS-only).
+    // const promptManual = () => {
+    //     if (Platform.OS === 'ios') {
+    //         Alert.prompt(
+    //             '✏️ Enter License Plate',
+    //             'Type the plate number (e.g. LEA-1234)',
+    //             (text) => {
+    //                 if (!text || !text.trim()) return;
+    //                 fillPlate(normalizeVehicleNumber(text.trim().toUpperCase()));
+    //             },
+    //             'plain-text',
+    //             '',
+    //             'default'
+    //         );
+    //     } else {
+    //         Alert.alert(
+    //             '📷 OCR could not read the plate',
+    //             'Please type the license plate number in the field below.',
+    //             [{ text: 'OK' }]
+    //         );
+    //     }
+    // };
 
-                {/* Scan guideline overlay – absolutely positioned over the camera */}
-                <View style={styles.cameraOverlay} pointerEvents="none">
-                    <Text style={styles.cameraHint}>Point at license plate</Text>
-                    <View style={[styles.scanGuideline, { borderColor: accentColor }]}>
-                        <View style={[styles.corner, styles.cornerTL, { borderColor: accentColor }]} />
-                        <View style={[styles.corner, styles.cornerTR, { borderColor: accentColor }]} />
-                        <View style={[styles.corner, styles.cornerBL, { borderColor: accentColor }]} />
-                        <View style={[styles.corner, styles.cornerBR, { borderColor: accentColor }]} />
-                    </View>
-                </View>
+    // Primary handler — capture photo → OCR → auto-fill or fall back to manual.
+    // const handleOcrScan = async () => {
+    //     if (!cameraRef.current || scanning) return;
+    //     setScanning(true);
+    //     try {
+    //         const photo = await cameraRef.current.takePictureAsync({
+    //             quality: 0.85,
+    //             skipProcessing: false,
+    //             base64: true,
+    //         });
+    //         if (!photo?.uri) throw new Error('No photo captured');
+    //         const plate = await detectLicensePlate(photo.uri);
+    //         if (plate) {
+    //             fillPlate(normalizeVehicleNumber(plate));
+    //         } else {
+    //             promptManual();
+    //         }
+    //     } catch (err) {
+    //         console.warn('[OCR] scan failed, falling back to manual:', err);
+    //         promptManual();
+    //     } finally {
+    //         setScanning(false);
+    //     }
+    // };
 
-                {/* Scan / Manual button – absolutely positioned at bottom */}
-                <TouchableOpacity
-                    style={[styles.scanButton, { backgroundColor: accentColor }, scanning && styles.scanButtonDisabled]}
-                    onPress={handleOcrScan}
-                    activeOpacity={0.8}
-                    disabled={scanning}
-                >
-                    <Text style={styles.scanButtonText}>
-                        {scanning ? '⏳  Scanning...' : '📷  Scan Plate'}
-                    </Text>
-                </TouchableOpacity>
-            </View>
-        );
-    };
+    // (CameraSection is now defined at module level — see above)
 
     // ===== RESIDENT ENTRY HANDLER =====
     const handleResidentEntry = async () => {
         if (!registeredVehicle) {
-            window.alert('Please enter a registered vehicle number');
+            Alert.alert('Please enter a registered vehicle number');
             return;
         }
         if (!userProfile) {
-            window.alert('Error: User not logged in');
+            Alert.alert('Error: User not logged in');
             return;
         }
 
         setResidentLoading(true);
         try {
+            // 1. Upload photo first (if captured) — use a temp name, rename after we have logId
+            let photoUrl: string | null = null;
+            if (capturedUri) {
+                const tempId = `tmp_${Date.now()}_${userProfile.uid}`;
+                photoUrl = await uploadEntryPhoto(capturedUri, tempId);
+                if (!photoUrl) console.warn('[Entry] Photo upload failed — logging without photo');
+            }
+
+            // 2. Log entry with the photo URL already embedded
             const result = await logVehicleEntry({
                 vehicleNo: residentVehicleNo.trim().toUpperCase(),
                 type: 'Resident',
                 residentId: registeredVehicle.residentId,
                 residentName: registeredVehicle.residentName,
-                houseNo: registeredVehicle.houseNo
+                houseNo: registeredVehicle.houseNo,
+                photoUrl,
             }, userProfile.uid, userProfile.name);
 
             setResidentLoading(false);
@@ -316,37 +435,47 @@ export default function GateEntryScreen() {
                 showSuccessAnimation('Resident Entry ✅', residentVehicleNo);
                 resetResidentForm();
             } else {
-                window.alert('Error: ' + (result.error || 'Failed to log entry'));
+                Alert.alert('Error: ' + (result.error || 'Failed to log entry'));
             }
         } catch (error) {
             setResidentLoading(false);
-            window.alert('Error: ' + (error instanceof Error ? error.message : 'Unknown error'));
+            Alert.alert('Error: ' + (error instanceof Error ? error.message : 'Unknown error'));
         }
     };
 
     // ===== VISITOR ENTRY HANDLER =====
     const handleVisitorEntry = async () => {
         if (!visitorVehicleNo.trim()) {
-            window.alert('Please enter vehicle number');
+            Alert.alert('Please enter vehicle number');
             return;
         }
         if (!visitorName.trim()) {
-            window.alert('Please enter visitor name');
+            Alert.alert('Please enter visitor name');
             return;
         }
         if (!userProfile) {
-            window.alert('Error: User not logged in');
+            Alert.alert('Error: User not logged in');
             return;
         }
 
         setVisitorLoading(true);
         try {
+            // 1. Upload photo first (if captured)
+            let photoUrl: string | null = null;
+            if (capturedUri) {
+                const tempId = `tmp_${Date.now()}_${userProfile.uid}`;
+                photoUrl = await uploadEntryPhoto(capturedUri, tempId);
+                if (!photoUrl) console.warn('[Entry] Photo upload failed — logging without photo');
+            }
+
+            // 2. Log entry with the photo URL already embedded
             const result = await logVehicleEntry({
                 vehicleNo: visitorVehicleNo.trim().toUpperCase(),
                 type: 'Visitor',
                 visitorName: visitorName.trim(),
                 purpose: visitorPurpose.trim() || null,
-                houseNo: visitorHouseNo.trim() || undefined
+                houseNo: visitorHouseNo.trim() || undefined,
+                photoUrl,
             }, userProfile.uid, userProfile.name);
 
             setVisitorLoading(false);
@@ -354,39 +483,49 @@ export default function GateEntryScreen() {
                 showSuccessAnimation('Visitor Entry ✅', visitorVehicleNo);
                 resetVisitorForm();
             } else {
-                window.alert('Error: ' + (result.error || 'Failed to log entry'));
+                Alert.alert('Error: ' + (result.error || 'Failed to log entry'));
             }
         } catch (error) {
             setVisitorLoading(false);
-            window.alert('Error: ' + (error instanceof Error ? error.message : 'Unknown error'));
+            Alert.alert('Error: ' + (error instanceof Error ? error.message : 'Unknown error'));
         }
     };
 
     // ===== EXIT HANDLER =====
     const handleExit = async () => {
         if (!activeVehicle?.id) {
-            window.alert('No vehicle selected');
+            Alert.alert('No vehicle selected');
             return;
         }
         if (!userProfile) {
-            window.alert('Error: User not logged in');
+            Alert.alert('Error: User not logged in');
             return;
         }
 
         setExitLoading(true);
         try {
-            const result = await logVehicleExit(activeVehicle.id);
+            // 1. Upload exit photo first (if captured)
+            let exitPhotoUrl: string | null = null;
+            if (capturedUri) {
+                const tempId = `exit_tmp_${Date.now()}_${userProfile.uid}`;
+                exitPhotoUrl = await uploadEntryPhoto(capturedUri, tempId);
+                if (!exitPhotoUrl) console.warn('[Exit] Photo upload failed — logging without photo');
+            }
+
+            // 2. Log exit with the photo URL
+            const result = await logVehicleExit(activeVehicle.id, exitPhotoUrl);
+
             setExitLoading(false);
             if (result.success) {
                 showSuccessAnimation('Exit Logged 👋', exitVehicleNo);
                 resetExitForm();
                 // activeVehiclesList updates automatically via SecurityDataContext onSnapshot
             } else {
-                window.alert('Error: ' + (result.error || 'Failed to log exit'));
+                Alert.alert('Error: ' + (result.error || 'Failed to log exit'));
             }
         } catch (error) {
             setExitLoading(false);
-            window.alert('Error: ' + (error instanceof Error ? error.message : 'Unknown error'));
+            Alert.alert('Error: ' + (error instanceof Error ? error.message : 'Unknown error'));
         }
     };
 
@@ -450,7 +589,18 @@ export default function GateEntryScreen() {
             {activeTab === 'resident' && (
                 <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
                     {/* Live Camera – Resident (green accent) */}
-                    <CameraSection accentColor="#10b981" />
+                    <CameraSection
+                        accentColor="#10b981"
+                        permission={permission}
+                        requestPermission={requestPermission}
+                        cameraRef={cameraRef}
+                        zoom={zoom}
+                        setZoom={setZoom}
+                        capturedUri={capturedUri}
+                        setCapturedUri={setCapturedUri}
+                        capturing={capturing}
+                        onCapture={handleCapture}
+                    />
 
                     <Card style={styles.entryCard}>
                         <View style={styles.cardHeader}>
@@ -517,7 +667,18 @@ export default function GateEntryScreen() {
             {activeTab === 'visitor' && (
                 <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
                     {/* Live Camera – Visitor (orange accent) */}
-                    <CameraSection accentColor="#f59e0b" />
+                    <CameraSection
+                        accentColor="#f97316"
+                        permission={permission}
+                        requestPermission={requestPermission}
+                        cameraRef={cameraRef}
+                        zoom={zoom}
+                        setZoom={setZoom}
+                        capturedUri={capturedUri}
+                        setCapturedUri={setCapturedUri}
+                        capturing={capturing}
+                        onCapture={handleCapture}
+                    />
 
                     <Card style={[styles.entryCard, styles.visitorCard]}>
                         <View style={styles.cardHeader}>
@@ -603,7 +764,18 @@ export default function GateEntryScreen() {
             {activeTab === 'exit' && (
                 <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
                     {/* Live Camera – Exit (blue accent) */}
-                    <CameraSection accentColor="#3b82f6" />
+                    <CameraSection
+                        accentColor="#3b82f6"
+                        permission={permission}
+                        requestPermission={requestPermission}
+                        cameraRef={cameraRef}
+                        zoom={zoom}
+                        setZoom={setZoom}
+                        capturedUri={capturedUri}
+                        setCapturedUri={setCapturedUri}
+                        capturing={capturing}
+                        onCapture={handleCapture}
+                    />
 
                     <Card style={[styles.entryCard, styles.exitCard]}>
                         <View style={styles.cardHeader}>
@@ -717,47 +889,47 @@ const styles = StyleSheet.create({
 
     // ===== CAMERA STYLES =====
     cameraContainer: {
-        height: 230,
+        height: 280,                  // Taller viewfinder for better visibility
         marginBottom: 16,
         borderRadius: 20,
         overflow: 'hidden',
         backgroundColor: '#0a0a14',
         borderWidth: 1.5,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     camera: {
         ...StyleSheet.absoluteFillObject,
     },
     cameraOverlay: {
         ...StyleSheet.absoluteFillObject,
-        justifyContent: 'space-between',
+        justifyContent: 'flex-start', // Badge pinned to top-left
+        alignItems: 'flex-start',
+        padding: 12,
+        // No dim overlay — let the live feed show clearly
+    },
+    // LIVE badge
+    liveBadge: {
+        flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 12,
-        backgroundColor: 'rgba(0,0,0,0.25)',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 20,
+        gap: 6,
     },
-    cameraHint: {
-        color: 'rgba(255,255,255,0.7)',
-        fontSize: 12,
-        fontWeight: '500',
-        letterSpacing: 0.5,
+    liveDot: {
+        width: 7,
+        height: 7,
+        borderRadius: 4,
+        backgroundColor: '#fff',
     },
-    scanGuideline: {
-        width: '78%',
-        height: 58,
-        borderWidth: 1.5,
-        borderRadius: 8,
-        position: 'relative',
+    liveBadgeText: {
+        color: '#fff',
+        fontSize: 11,
+        fontWeight: '800',
+        letterSpacing: 1,
     },
-    // Corner accent marks
-    corner: {
-        position: 'absolute',
-        width: 14,
-        height: 14,
-        borderColor: 'inherit',
-    },
-    cornerTL: { top: -2, left: -2, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: 5 },
-    cornerTR: { top: -2, right: -2, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: 5 },
-    cornerBL: { bottom: -2, left: -2, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: 5 },
-    cornerBR: { bottom: -2, right: -2, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: 5 },
+    // Kept for reference — used when OCR scan button is re-enabled
     scanButton: {
         position: 'absolute',
         bottom: 0,
@@ -768,6 +940,19 @@ const styles = StyleSheet.create({
     },
     scanButtonDisabled: { opacity: 0.55 },
     scanButtonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+    cameraHint: {
+        color: 'rgba(255,255,255,0.7)',
+        fontSize: 12,
+        fontWeight: '500',
+        letterSpacing: 0.5,
+    },
+    // Scan guideline corners — kept for OCR re-enable
+    scanGuideline: { width: '78%', height: 58, borderWidth: 1.5, borderRadius: 8, position: 'relative' },
+    corner: { position: 'absolute', width: 14, height: 14 },
+    cornerTL: { top: -2, left: -2, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: 5 },
+    cornerTR: { top: -2, right: -2, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: 5 },
+    cornerBL: { bottom: -2, left: -2, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: 5 },
+    cornerBR: { bottom: -2, right: -2, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: 5 },
     cameraStatusText: { color: '#6b6b8a', fontSize: 14 },
     cameraIcon: { fontSize: 32, marginBottom: 10 },
     cameraText: { fontSize: 14, color: '#6b6b8a', fontWeight: '500', marginBottom: 14 },
@@ -777,6 +962,95 @@ const styles = StyleSheet.create({
         borderRadius: 10,
     },
     permissionButtonText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+
+    // Bottom controls bar (zoom + capture)
+    cameraControls: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        paddingHorizontal: 14,
+        paddingBottom: 8,
+        paddingTop: 6,
+        backgroundColor: 'rgba(0,0,0,0.55)',
+        gap: 8,
+    },
+
+    // Zoom row
+    zoomRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    zoomBtn: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    zoomBtnText: { color: '#fff', fontSize: 20, fontWeight: '300', lineHeight: 26 },
+    zoomTrack: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    zoomStep: {
+        flex: 1,
+        height: 5,
+        borderRadius: 3,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+    },
+    zoomLabel: {
+        fontSize: 12,
+        fontWeight: '700',
+        minWidth: 34,
+        textAlign: 'right',
+    },
+
+    // Capture button (full width, pinned in controls bar)
+    captureButton: {
+        paddingVertical: 12,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    captureButtonDisabled: { opacity: 0.5 },
+    captureButtonText: { color: '#fff', fontWeight: '700', fontSize: 15, letterSpacing: 0.3 },
+
+    // Preview overlay (shown after capture)
+    previewOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        justifyContent: 'space-between',
+        padding: 12,
+    },
+    previewBadge: {
+        alignSelf: 'flex-start',
+        paddingHorizontal: 12,
+        paddingVertical: 5,
+        borderRadius: 20,
+    },
+    previewBadgeText: { color: '#fff', fontWeight: '800', fontSize: 12, letterSpacing: 0.5 },
+    previewActions: {
+        flexDirection: 'row',
+        gap: 10,
+    },
+    retakeButton: {
+        flex: 1,
+        paddingVertical: 11,
+        borderRadius: 12,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        alignItems: 'center',
+    },
+    retakeText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+    useThisButton: {
+        flex: 2,
+        paddingVertical: 11,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    useThisText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 
     // Entry Cards
     entryCard: {

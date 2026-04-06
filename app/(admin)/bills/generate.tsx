@@ -4,7 +4,7 @@
 import { Picker } from '@react-native-picker/picker';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, FlatList, Platform } from 'react-native';
 import { Button } from '../../../src/components/common/Button';
 import { LoadingSpinner } from '../../../src/components/common/LoadingSpinner';
 import { useAuth } from '../../../src/contexts/AuthContext';
@@ -23,6 +23,10 @@ export default function GenerateBillsScreen() {
     const [baseCharges, setBaseCharges] = useState('5000');
     const [loading, setLoading] = useState(true);
     const [generating, setGenerating] = useState(false);
+    
+    // Custom modal state for iOS-compatible picker
+    const [modalVisible, setModalVisible] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Get current month
     const now = new Date();
@@ -43,6 +47,17 @@ export default function GenerateBillsScreen() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const filteredResidents = residents.filter(r => 
+        r.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        r.houseNo?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const getSelectedLabel = () => {
+        if (selectedResident === 'all') return `All Residents (${residents.length})`;
+        const res = residents.find(r => r.uid === selectedResident);
+        return res ? `${res.name} - House ${res.houseNo}` : 'Select Resident';
     };
 
     const handleGenerate = async () => {
@@ -196,30 +211,19 @@ export default function GenerateBillsScreen() {
                     </Text>
                 </View>
 
-                {/* Resident Selection - DROPDOWN */}
+                {/* Resident Selection - Custom iOS compatible Picker */}
                 <View style={[styles.section, { marginBottom: spacing.xl }]}>
                     <Text style={[styles.label, { fontSize: fontSize.base, marginBottom: spacing.sm }]}>
                         Select Resident(s)
                     </Text>
-                    <View style={[styles.pickerContainer, { borderRadius: borderRadius.md }]}>
-                        <Picker
-                            selectedValue={selectedResident}
-                            onValueChange={(value) => setSelectedResident(value)}
-                            style={styles.picker}
-                        >
-                            <Picker.Item
-                                label={`All Residents (${residents.length})`}
-                                value="all"
-                            />
-                            {residents.map((resident) => (
-                                <Picker.Item
-                                    key={resident.uid}
-                                    label={`${resident.name} - House ${resident.houseNo}`}
-                                    value={resident.uid}
-                                />
-                            ))}
-                        </Picker>
-                    </View>
+                    <TouchableOpacity
+                        style={[styles.input, { padding: spacing.md, borderRadius: borderRadius.md, justifyContent: 'center', minHeight: 50 }]}
+                        onPress={() => setModalVisible(true)}
+                    >
+                        <Text style={{ fontSize: fontSize.base, color: '#333' }}>
+                            {getSelectedLabel()}
+                        </Text>
+                    </TouchableOpacity>
                     <Text style={[styles.helperText, { fontSize: fontSize.xs, marginTop: spacing.xs }]}>
                         {selectedResident === 'all'
                             ? `Generate bills for all ${residents.length} residents`
@@ -227,18 +231,63 @@ export default function GenerateBillsScreen() {
                     </Text>
                 </View>
 
+                {/* Native-like Picker Modal */}
+                <Modal visible={modalVisible} animationType="slide" transparent={true} onRequestClose={() => setModalVisible(false)}>
+                    <View style={styles.modalOverlay}>
+                        <View style={styles.modalContent}>
+                            <View style={styles.modalHeader}>
+                                <Text style={styles.modalTitle}>Select Resident</Text>
+                                <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeBtn}>
+                                    <Text style={styles.closeBtnText}>✕</Text>
+                                </TouchableOpacity>
+                            </View>
+                            
+                            <TextInput
+                                style={styles.searchInput}
+                                placeholder="Search explicitly..."
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                            />
+
+                            <FlatList
+                                data={[{ uid: 'all', name: 'All Residents', houseNo: '' }, ...filteredResidents]}
+                                keyExtractor={(item) => item.uid!}
+                                renderItem={({ item }) => (
+                                    <TouchableOpacity
+                                        style={styles.residentItem}
+                                        onPress={() => {
+                                            setSelectedResident(item.uid!);
+                                            setModalVisible(false);
+                                            setSearchQuery('');
+                                        }}
+                                    >
+                                        <Text style={styles.residentName}>
+                                            {item.uid === 'all' ? `All Residents (${residents.length})` : item.name}
+                                        </Text>
+                                        {item.uid !== 'all' && (
+                                            <Text style={styles.residentDetails}>House: {item.houseNo}</Text>
+                                        )}
+                                    </TouchableOpacity>
+                                )}
+                                style={{ maxHeight: 400 }}
+                            />
+                        </View>
+                    </View>
+                </Modal>
+
                 {/* Info Box */}
                 <View style={[styles.infoBox, { padding: spacing.lg, borderRadius: borderRadius.md, marginBottom: spacing.xl }]}>
                     <Text style={styles.infoIcon}>ℹ️</Text>
                     <View style={styles.infoContent}>
                         <Text style={[styles.infoTitle, { fontSize: fontSize.sm }]}>
-                            Auto-Duplicate Detection
+                            What Happens When You Generate
                         </Text>
                         <Text style={[styles.infoText, { fontSize: fontSize.xs }]}>
-                            • Checks if bill already exists{'\n'}
-                            • Skips residents with existing bills{'\n'}
-                            • Carries forward previous unpaid dues{'\n'}
-                            • Bills created in Draft status
+                            {'• Checks if bill already exists (no duplicates)\n'}
+                            {'• Carries forward any unpaid dues + 10% late fee\n'}
+                            {'• Rolls in unbilled complaint charges\n'}
+                            {'• Bills are created as Unpaid — residents can see them immediately\n'}
+                            {'• Note: push notifications not yet active'}
                         </Text>
                     </View>
                 </View>
@@ -297,14 +346,56 @@ const styles = StyleSheet.create({
     helperText: {
         color: '#999',
     },
-    pickerContainer: {
-        backgroundColor: '#fff',
-        borderWidth: 1,
-        borderColor: '#DDD',
-        overflow: 'hidden',
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
     },
-    picker: {
-        height: 50,
+    modalContent: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        padding: 20,
+        maxHeight: '80%',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+    },
+    closeBtn: {
+        padding: 8,
+    },
+    closeBtnText: {
+        fontSize: 18,
+        color: '#666',
+    },
+    searchInput: {
+        backgroundColor: '#F5F5F5',
+        borderRadius: 8,
+        padding: 12,
+        marginBottom: 16,
+        fontSize: 16,
+    },
+    residentItem: {
+        paddingVertical: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: '#EEE',
+    },
+    residentName: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#333',
+    },
+    residentDetails: {
+        fontSize: 14,
+        color: '#666',
+        marginTop: 2,
     },
     infoBox: {
         flexDirection: 'row',

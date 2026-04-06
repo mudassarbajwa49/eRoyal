@@ -11,35 +11,39 @@ import { Button } from '../../../src/components/common/Button';
 import { Card } from '../../../src/components/common/Card';
 import { LoadingSpinner } from '../../../src/components/common/LoadingSpinner';
 import { StatusBadge } from '../../../src/components/common/StatusBadge';
+import { useAppData } from '../../../src/contexts/AppDataContext';
 import { uploadPaymentProof } from '../../../src/services/MonthlyBillingService';
 import { Bill } from '../../../src/types';
 
 export default function BillDetailScreen() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
+    const { bills } = useAppData(); // BUG 8 fix: read from context first for instant load
     const [bill, setBill] = useState<Bill | null>(null);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
     useEffect(() => {
-        loadBill();
-    }, [id]);
-
-    const loadBill = async () => {
         if (!id) return;
-
-        try {
-            const billDoc = await getDoc(doc(db, 'bills', id as string));
+        // Try context first (instant, no network round-trip)
+        const cached = bills.find(b => b.id === id as string);
+        if (cached) {
+            setBill(cached);
+            setLoading(false);
+            return;
+        }
+        // Fall back to direct fetch (deep-link or admin impersonation path)
+        getDoc(doc(db, 'bills', id as string)).then(billDoc => {
             if (billDoc.exists()) {
                 setBill({ id: billDoc.id, ...billDoc.data() } as Bill);
             }
-        } catch (error) {
-            console.error('Error loading bill:', error);
-        } finally {
+        }).catch(err => {
+            console.error('Error loading bill:', err);
+        }).finally(() => {
             setLoading(false);
-        }
-    };
+        });
+    }, [id, bills]);
 
     const pickImage = async () => {
         const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -50,7 +54,7 @@ export default function BillDetailScreen() {
         }
 
         const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            mediaTypes: ['images'], // BUG 9 fixed: MediaTypeOptions.Images is deprecated in Expo SDK 51+
             allowsEditing: true,
             aspect: [4, 3],
             quality: 0.8
@@ -83,8 +87,17 @@ export default function BillDetailScreen() {
 
     const formatDate = (timestamp: any): string => {
         if (!timestamp) return '';
-        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-        return date.toLocaleDateString();
+        try {
+            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+            return date.toLocaleDateString();
+        } catch {
+            return '';
+        }
+    };
+
+    const formatCurrency = (val: any): string => {
+        const num = Number(val) || 0;
+        return num.toLocaleString();
     };
 
     if (loading) {
@@ -112,7 +125,7 @@ export default function BillDetailScreen() {
 
                         <View style={styles.amountContainer}>
                             <Text style={styles.label}>Amount Due</Text>
-                            <Text style={styles.amount}>Rs. {bill.amount.toLocaleString()}</Text>
+                            <Text style={styles.amount}>Rs. {formatCurrency(bill.amount)}</Text>
                         </View>
 
                         {/* Bill Breakdown */}
@@ -123,21 +136,21 @@ export default function BillDetailScreen() {
                                 <View style={styles.breakdownItem}>
                                     <Text style={styles.breakdownLabel}>Base Charges</Text>
                                     <Text style={styles.breakdownValue}>
-                                        Rs. {bill.breakdown.baseCharges.toLocaleString()}
+                                        Rs. {formatCurrency(bill.breakdown.baseCharges)}
                                     </Text>
                                 </View>
 
-                                {bill.breakdown.previousDues > 0 && (
+                                {Number(bill.breakdown.previousDues || 0) > 0 && (
                                     <View style={styles.breakdownItem}>
                                         <Text style={styles.breakdownLabel}>Previous Dues</Text>
                                         <Text style={[styles.breakdownValue, styles.dueValue]}>
-                                            Rs. {bill.breakdown.previousDues.toLocaleString()}
+                                            Rs. {formatCurrency(bill.breakdown.previousDues)}
                                         </Text>
                                     </View>
                                 )}
 
                                 {/* Complaint Charges */}
-                                {bill.breakdown.complaintCharges && bill.breakdown.complaintCharges.length > 0 && (
+                                {Array.isArray(bill.breakdown.complaintCharges) && bill.breakdown.complaintCharges.length > 0 && (
                                     <View style={styles.complaintChargesSection}>
                                         <Text style={styles.sectionLabel}>Complaint Charges</Text>
                                         {bill.breakdown.complaintCharges.map((charge, index) => (
@@ -147,7 +160,7 @@ export default function BillDetailScreen() {
                                                     <Text style={styles.complaintDesc}>{charge.description}</Text>
                                                 </View>
                                                 <Text style={styles.complaintAmount}>
-                                                    Rs. {charge.amount.toLocaleString()}
+                                                    Rs. {formatCurrency(charge.amount)}
                                                 </Text>
                                             </View>
                                         ))}
@@ -157,7 +170,7 @@ export default function BillDetailScreen() {
                                 <View style={[styles.breakdownItem, styles.totalItem]}>
                                     <Text style={styles.totalLabel}>Total Amount</Text>
                                     <Text style={styles.totalValue}>
-                                        Rs. {bill.breakdown.total.toLocaleString()}
+                                        Rs. {formatCurrency(bill.breakdown.total || bill.amount)}
                                     </Text>
                                 </View>
                             </View>

@@ -17,18 +17,21 @@ import {
 import { ListingCard } from '../../../src/components/marketplace/ListingCard';
 import { useAdminData } from '../../../src/contexts/AdminDataContext';
 import { useAuth } from '../../../src/contexts/AuthContext';
+import { useBreakpoint } from '../../../src/hooks/useResponsive';
 import {
     approveListing,
     rejectListing,
 } from '../../../src/services/MarketplaceListingService';
+import { fontSize, spacing } from '../../../src/utils/responsive';
 
 export default function MarketplaceIndex() {
     const router = useRouter();
+    const breakpoint = useBreakpoint();
     const { userProfile } = useAuth();
-    const { pendingListings, approvedListings, rejectedListings, refresh } = useAdminData();
+    const { pendingListings, liveListings, rejectedListings, inactiveListings, refresh } = useAdminData();
 
     const [refreshing, setRefreshing] = useState(false);
-    const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
+    const [activeTab, setActiveTab] = useState<'pending' | 'live' | 'rejected' | 'inactive'>('pending');
 
     // ── Inline confirmation state (replaces window.confirm / prompt) ──────────
     const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -165,35 +168,53 @@ export default function MarketplaceIndex() {
                 </View>
             )}
 
-            {/* ── Tabs (original structure) ── */}
+            {/* ── Header ── */}
+            <View style={{ ...styles.header, padding: spacing.lg }}>
+                <Text style={{ ...styles.headerTitle, fontSize: breakpoint.mobile ? fontSize['2xl'] : fontSize['3xl'] }}>
+                    Marketplace
+                </Text>
+                <Text style={{ ...styles.subtitle, fontSize: fontSize.sm }}>
+                    {pendingListings.length + liveListings.length + rejectedListings.length + inactiveListings.length} total listings
+                </Text>
+            </View>
+
+            {/* ── Tabs ── */}
             <View style={styles.tabContainer}>
                 <TouchableOpacity
                     style={[styles.tab, activeTab === 'pending' && styles.activeTab]}
                     onPress={() => setActiveTab('pending')}
                 >
-                    <Text style={[styles.tabText, activeTab === 'pending' && styles.activeTabText]}>
+                    <Text style={[styles.tabText, activeTab === 'pending' && styles.activeTabText, { fontSize: breakpoint.mobile ? fontSize.xs : fontSize.sm }]}>
                         Pending ({pendingListings.length})
                     </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                    style={[styles.tab, activeTab === 'approved' && styles.activeTab]}
-                    onPress={() => setActiveTab('approved')}
+                    style={[styles.tab, activeTab === 'live' && styles.activeTab]}
+                    onPress={() => setActiveTab('live')}
                 >
-                    <Text style={[styles.tabText, activeTab === 'approved' && styles.activeTabText]}>
-                        Approved ({approvedListings.length})
+                    <Text style={[styles.tabText, activeTab === 'live' && styles.activeTabText, { fontSize: breakpoint.mobile ? fontSize.xs : fontSize.sm }]}>
+                        Live ({liveListings.length})
                     </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.tab, activeTab === 'rejected' && styles.activeTab]}
                     onPress={() => setActiveTab('rejected')}
                 >
-                    <Text style={[styles.tabText, activeTab === 'rejected' && styles.activeTabText]}>
+                    <Text style={[styles.tabText, activeTab === 'rejected' && styles.activeTabText, { fontSize: breakpoint.mobile ? fontSize.xs : fontSize.sm }]}>
                         Rejected ({rejectedListings.length})
+                    </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.tab, activeTab === 'inactive' && styles.activeTab]}
+                    onPress={() => setActiveTab('inactive')}
+                >
+                    <Text style={[styles.tabText, activeTab === 'inactive' && styles.activeTabText, { fontSize: breakpoint.mobile ? fontSize.xs : fontSize.sm }]}>
+                        Sold/Inactive ({inactiveListings.length})
                     </Text>
                 </TouchableOpacity>
             </View>
 
-            {/* ── Content (original structure) ── */}
+            {/* ── Content ── */}
             <ScrollView
                 style={styles.content}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -215,14 +236,29 @@ export default function MarketplaceIndex() {
                             />
                         ))
                     )
-                ) : activeTab === 'approved' ? (
-                    approvedListings.length === 0 ? (
+                ) : activeTab === 'live' ? (
+                    liveListings.length === 0 ? (
                         <View style={styles.emptyState}>
-                            <Text style={styles.emptyIcon}>🏘️</Text>
-                            <Text style={styles.emptyText}>No approved listings yet</Text>
+                            <Text style={styles.emptyIcon}>🛍️</Text>
+                            <Text style={styles.emptyText}>No live listings</Text>
                         </View>
                     ) : (
-                        approvedListings.map(listing => (
+                        liveListings.map(listing => (
+                            <ListingCard
+                                key={listing.id}
+                                listing={listing}
+                                isAdmin
+                            />
+                        ))
+                    )
+                ) : activeTab === 'rejected' ? (
+                    rejectedListings.length === 0 ? (
+                        <View style={styles.emptyState}>
+                            <Text style={styles.emptyIcon}>❌</Text>
+                            <Text style={styles.emptyText}>No rejected listings</Text>
+                        </View>
+                    ) : (
+                        rejectedListings.map(listing => (
                             <ListingCard
                                 key={listing.id}
                                 listing={listing}
@@ -231,13 +267,13 @@ export default function MarketplaceIndex() {
                         ))
                     )
                 ) : (
-                    rejectedListings.length === 0 ? (
+                    inactiveListings.length === 0 ? (
                         <View style={styles.emptyState}>
-                            <Text style={styles.emptyIcon}>❌</Text>
-                            <Text style={styles.emptyText}>No rejected listings</Text>
+                            <Text style={styles.emptyIcon}>📥</Text>
+                            <Text style={styles.emptyText}>No sold or inactive listings</Text>
                         </View>
                     ) : (
-                        rejectedListings.map(listing => (
+                        inactiveListings.map(listing => (
                             <ListingCard
                                 key={listing.id}
                                 listing={listing}
@@ -296,7 +332,22 @@ const styles = StyleSheet.create({
     rejectBtn: { backgroundColor: '#DC2626' },
     cancelBtn: { backgroundColor: '#4B5563' },
 
-    // Original styles preserved exactly
+    // Header matching other admin screens
+    header: {
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#EEE',
+    },
+    headerTitle: {
+        fontWeight: '700',
+        color: '#333',
+        marginBottom: 4,
+    },
+    subtitle: {
+        color: '#999',
+    },
+
+    // Tabs
     tabContainer: {
         flexDirection: 'row',
         backgroundColor: '#fff',
@@ -305,18 +356,18 @@ const styles = StyleSheet.create({
     },
     tab: {
         flex: 1,
-        paddingVertical: 16,
+        paddingVertical: 14,
         alignItems: 'center',
         borderBottomWidth: 2,
-        borderBottomColor: 'transparent'
+        borderBottomColor: 'transparent',
     },
     activeTab: {
         borderBottomColor: '#007AFF'
     },
     tabText: {
-        fontSize: 16,
+        fontWeight: '500',
         color: '#666',
-        fontWeight: '500'
+        textAlign: 'center',
     },
     activeTabText: {
         color: '#007AFF',

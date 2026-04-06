@@ -238,6 +238,8 @@ export const generateSingleBill = async (
     adminId: string
 ): Promise<ApiResponse> => {
     try {
+        const batch = writeBatch(db);
+
         // CHECK IF BILL ALREADY EXISTS
         const existingBillQuery = query(
             collection(db, 'bills'),
@@ -253,7 +255,7 @@ export const generateSingleBill = async (
             };
         }
 
-        // Check for unpaid bills from previous months
+        // 1. Check for unpaid bills from previous months
         const previousBillsQuery = query(
             collection(db, 'bills'),
             where('residentId', '==', residentId),
@@ -262,37 +264,76 @@ export const generateSingleBill = async (
         const previousBillsSnapshot = await getDocs(previousBillsQuery);
 
         let previousDues = 0;
+        let lateFee = 0;
         previousBillsSnapshot.forEach((billDoc) => {
             const billData = billDoc.data();
             if (billData.status === 'Unpaid' || billData.status === 'Pending') {
                 previousDues += billData.amount || 0;
+                lateFee += (billData.amount || 0) * LATE_FEE_PERCENTAGE;
             }
         });
 
-        // Create bill breakdown
+        // 2. Find unbilled complaints
+        const unbilledComplaintsQuery = query(
+            collection(db, 'complaints'),
+            where('residentId', '==', residentId),
+            where('addedToBill', '==', false),
+            where('chargeAmount', '>', 0)
+        );
+        const unbilledComplaintsSnapshot = await getDocs(unbilledComplaintsQuery);
+
+        // Generate new bill ID first
+        const newBillRef = doc(collection(db, 'bills'));
+        const newBillId = newBillRef.id;
+
+        const complaintCharges: BillComplaintCharge[] = [];
+        let complaintTotal = 0;
+
+        unbilledComplaintsSnapshot.forEach((complaintDoc) => {
+            const complaintData = complaintDoc.data();
+            complaintCharges.push({
+                complaintId: complaintDoc.id,
+                complaintNumber: complaintData.complaintNumber || `C-${complaintDoc.id.slice(-6)}`,
+                description: complaintData.title || 'Complaint charge',
+                amount: complaintData.chargeAmount,
+            });
+            complaintTotal += complaintData.chargeAmount;
+
+            // Mark complaint as billed
+            const complaintRef = doc(db, 'complaints', complaintDoc.id);
+            batch.update(complaintRef, {
+                addedToBill: true,
+                billId: newBillId,
+            });
+        });
+
+        // 3. Create bill breakdown
+        const totalPrevious = previousDues + lateFee;
+        const totalAmount = baseCharges + complaintTotal + totalPrevious;
+
         const breakdown: BillBreakdown = {
             baseCharges,
-            complaintCharges: [],
-            previousDues,
-            total: baseCharges + previousDues,
+            complaintCharges,
+            previousDues: totalPrevious,
+            total: totalAmount,
         };
 
         // Parse due date
         const [year, monthNum] = month.split('-');
         const dueDate = new Date(parseInt(year), parseInt(monthNum) - 1, 25);
 
-        // Create bill
+        // 4. Create bill document
         const billData: Omit<Bill, 'id'> = {
             residentId,
             residentName,
-            houseNo,
+            houseNo: houseNo || '',
             month,
             breakdown,
-            amount: breakdown.total,
+            amount: totalAmount,
             dueDate: Timestamp.fromDate(dueDate),
-            status: 'Draft' as BillStatus,
-            sentBy: null,
-            sentAt: null,
+            status: 'Unpaid' as BillStatus, // Set to Unpaid for immediate visibility
+            sentBy: adminId,
+            sentAt: serverTimestamp(),
             isArchived: false,
             proofUrl: null,
             proofUploadedAt: null,
@@ -301,11 +342,15 @@ export const generateSingleBill = async (
             createdAt: serverTimestamp(),
         };
 
-        await addDoc(collection(db, 'bills'), billData);
+        batch.set(newBillRef, billData);
+        await batch.commit();
+
+        // Invalidate cache
+        dataCache.invalidateAllBills();
 
         return {
             success: true,
-            message: `Bill generated for ${residentName} (${houseNo}) for ${month}`,
+            message: `Bill generated for ${residentName} (${houseNo}) for ${month}. Includes ${complaintCharges.length} complaint charges.`,
         };
     } catch (error) {
         console.error('Error generating single bill:', error);
@@ -371,7 +416,15 @@ export const sendBillToResident = async (
     adminId: string
 ): Promise<ApiResponse> => {
     try {
+        const { getDoc } = await import('firebase/firestore');
         const billRef = doc(db, 'bills', billId);
+        const billDoc = await getDoc(billRef);
+
+        if (!billDoc.exists()) {
+            return { success: false, error: 'Bill not found' };
+        }
+
+        const billData = billDoc.data() as Bill;
 
         await updateDoc(billRef, {
             status: 'Unpaid' as BillStatus,
@@ -379,7 +432,15 @@ export const sendBillToResident = async (
             sentAt: serverTimestamp(),
         });
 
-        // TODO: Send notification to resident
+        // Send notification to resident
+        const { createNotification } = await import('./notificationService');
+        await createNotification(
+            billData.residentId,
+            'New Bill Available',
+            `Your bill for ${billData.month} is now available. Total Due: Rs. ${(billData.amount || 0).toLocaleString()}`,
+            'Bill',
+            billId
+        );
 
         return {
             success: true,
@@ -673,13 +734,27 @@ export const verifyPayment = async (
     adminUid: string
 ): Promise<ApiResponse> => {
     try {
+        const { getDoc } = await import('firebase/firestore');
         const billRef = doc(db, 'bills', billId);
+        const billDoc = await getDoc(billRef);
+
+        if (!billDoc.exists()) {
+            return { success: false, error: 'Bill not found' };
+        }
+
+        const billData = billDoc.data() as Bill;
 
         await updateDoc(billRef, {
             status: 'Paid' as BillStatus,
             verifiedBy: adminUid,
             verifiedAt: serverTimestamp(),
         });
+
+        // Handle notifications
+        const { deleteNotificationsByRelatedId } = await import('./notificationService');
+        
+        // Remove pending/unpaid notification after bill is paid
+        await deleteNotificationsByRelatedId(billId);
 
         return {
             success: true,

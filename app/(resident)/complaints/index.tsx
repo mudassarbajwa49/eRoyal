@@ -9,92 +9,28 @@
  */
 
 import { Stack, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors, Spacing, Typography } from '../../../constants/designSystem';
 import { Button } from '../../../src/components/common/Button';
 import { SkeletonLoader } from '../../../src/components/common/SkeletonLoader';
 import { ComplaintCard } from '../../../src/components/complaints/ComplaintCard';
-import { useAuth } from '../../../src/contexts/AuthContext';
+import { useAppData } from '../../../src/contexts/AppDataContext';
 import { useBreakpoint } from '../../../src/hooks/useResponsive';
 import { Complaint } from '../../../src/types';
 
 export default function ComplaintsIndex() {
-    const { userProfile } = useAuth();
+    const { complaints, initializing, refresh } = useAppData(); // BUG 7 fix: use context
     const router = useRouter();
     const breakpoint = useBreakpoint();
-    const [complaints, setComplaints] = useState<Complaint[]>([]);
-    const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [statusFilter, setStatusFilter] = useState<'all' | 'Pending' | 'In Progress' | 'Resolved'>('all');
 
-    /**
-     * Set up real-time listener for resident's complaints
-     * Updates automatically when complaints change
-     */
-    useEffect(() => {
-        if (!userProfile) {
-            console.log('⚠️ No user profile yet, skipping complaints listener');
-            return;
-        }
-
-        console.log('🔄 Setting up real-time listener for complaints');
-        console.log('   User ID:', userProfile.uid);
-        console.log('   User Name:', userProfile.name);
-        console.log('   User Role:', userProfile.role);
-
-        const { onSnapshot, collection, query, where, orderBy } = require('firebase/firestore');
-        const { db } = require('../../../firebaseConfig');
-
-        const q = query(
-            collection(db, 'complaints'),
-            where('residentId', '==', userProfile.uid),
-            orderBy('createdAt', 'desc')
-        );
-
-        const unsubscribe = onSnapshot(q,
-            (snapshot: any) => {
-                const complaintsData: Complaint[] = [];
-                snapshot.forEach((doc: any) => {
-                    const data = doc.data();
-                    complaintsData.push({
-                        id: doc.id,
-                        ...data,
-                    } as Complaint);
-                    console.log('   📄 Complaint found:', {
-                        id: doc.id,
-                        title: data.title,
-                        residentId: data.residentId,
-                        status: data.status
-                    });
-                });
-                console.log(`✅ Complaints updated: ${complaintsData.length} total complaints`);
-                if (complaintsData.length === 0) {
-                    console.log('   ℹ️ No complaints found for user:', userProfile.uid);
-                    console.log('   ℹ️ Make sure complaints in Firebase have residentId field matching this UID');
-                }
-                setComplaints(complaintsData);
-                setLoading(false);
-            },
-            (error: any) => {
-                console.error('❌ Error listening to complaints:', error);
-                console.error('   Error code:', error.code);
-                console.error('   Error message:', error.message);
-                setLoading(false);
-            }
-        );
-
-        return () => {
-            console.log('🧹 Cleaning up complaints listener');
-            unsubscribe();
-        };
-    }, [userProfile]);
-
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
-        // Data refreshes automatically via listener
+        refresh(); // no-op — context listeners auto-update
         setTimeout(() => setRefreshing(false), 500);
-    }, []);
+    }, [refresh]);
 
     const handleComplaintPress = useCallback((complaint: Complaint) => {
         router.push(`/(resident)/complaints/${complaint.id}` as any);
@@ -120,7 +56,7 @@ export default function ComplaintsIndex() {
 
     const keyExtractor = useCallback((item: Complaint) => item.id!, []);
 
-    if (loading) {
+    if (initializing) {
         return (
             <View style={styles.container}>
                 <View style={styles.header}>

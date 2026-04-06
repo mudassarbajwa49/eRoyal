@@ -13,8 +13,33 @@ import {
     updateDoc,
     where
 } from 'firebase/firestore';
-import { db } from '../../firebaseConfig';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { db, storage } from '../../firebaseConfig';
 import { ApiResponse, VehicleLog, VehicleType } from '../types';
+
+/**
+ * Upload a captured entry photo to Firebase Storage.
+ * @param localUri  Local file URI from expo-camera takePictureAsync
+ * @param logId     The Firestore vehicleLog document ID (used as filename)
+ * @returns         Public download URL, or null on failure
+ */
+export const uploadEntryPhoto = async (
+    localUri: string,
+    logId: string
+): Promise<string | null> => {
+    try {
+        const response = await fetch(localUri);
+        const blob = await response.blob();
+        const storageRef = ref(storage, `vehiclePhotos/${logId}.jpg`);
+        await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
+        const downloadUrl = await getDownloadURL(storageRef);
+        return downloadUrl;
+    } catch (error) {
+        console.error('[Entry Photo] Upload failed:', error);
+        return null;
+    }
+};
+
 
 /**
  * Log vehicle entry at the gate
@@ -28,6 +53,7 @@ export const logVehicleEntry = async (
         houseNo?: string;
         visitorName?: string;
         purpose?: string | null;
+        photoUrl?: string | null; // captured gate camera photo
     },
     loggedBy: string,
     loggedByName: string
@@ -62,6 +88,11 @@ export const logVehicleEntry = async (
             entryLog.purpose = vehicleData.purpose;
         }
 
+        // Add photo URL if a gate capture was taken
+        if (vehicleData.photoUrl) {
+            entryLog.photoUrl = vehicleData.photoUrl;
+        }
+
         const docRef = await addDoc(collection(db, 'vehicleLogs'), entryLog);
 
         return {
@@ -82,12 +113,19 @@ export const logVehicleEntry = async (
 /**
  * Log vehicle exit (update existing entry)
  */
-export const logVehicleExit = async (logId: string): Promise<ApiResponse> => {
+export const logVehicleExit = async (logId: string, exitPhotoUrl?: string | null): Promise<ApiResponse> => {
     try {
         const logRef = doc(db, 'vehicleLogs', logId);
-        await updateDoc(logRef, {
+
+        const updateData: any = {
             exitTime: serverTimestamp(),
-        });
+        };
+
+        if (exitPhotoUrl) {
+            updateData.exitPhotoUrl = exitPhotoUrl;
+        }
+
+        await updateDoc(logRef, updateData);
 
         return {
             success: true,

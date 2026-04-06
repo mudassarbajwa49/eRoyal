@@ -12,11 +12,12 @@
 import { useRouter } from 'expo-router';
 import { collection, deleteDoc, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
 import React, { useCallback, useMemo } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { db } from '../../../firebaseConfig';
 import { Button } from '../../../src/components/common/Button';
 import { Card } from '../../../src/components/common/Card';
 import { LoadingSpinner } from '../../../src/components/common/LoadingSpinner';
+import { useAdminData } from '../../../src/contexts/AdminDataContext';
 import { useBreakpoint } from '../../../src/hooks/useResponsive';
 import { UserProfile } from '../../../src/types';
 import { borderRadius, fontSize, spacing } from '../../../src/utils/responsive';
@@ -24,6 +25,7 @@ import { borderRadius, fontSize, spacing } from '../../../src/utils/responsive';
 export default function UsersIndex() {
     const router = useRouter();
     const breakpoint = useBreakpoint();
+    const { bills: allBills } = useAdminData();
     const [users, setUsers] = React.useState<UserProfile[]>([]);
     const [loading, setLoading] = React.useState(true);
     const [refreshing, setRefreshing] = React.useState(false);
@@ -114,53 +116,56 @@ export default function UsersIndex() {
      * Includes confirmation and error handling
      */
     const handleDeleteUser = async (user: UserProfile) => {
-        // Confirm deletion
-        const confirmed = window.confirm(
-            `Are you sure you want to delete ${user.name}?\n\nThis action cannot be undone and will:\n• Remove user from database\n• Delete all user data`
+        Alert.alert(
+            'Delete User',
+            `Are you sure you want to delete ${user.name}?\n\nThis action cannot be undone and will:\n• Remove user from database\n• Delete all user data`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        console.log('🗑️ Starting deletion for user:', user);
+
+                        try {
+                            const getCollectionName = (role: string) => {
+                                if (role === 'resident') return 'residents';
+                                if (role === 'security') return 'security_staff';
+                                if (role === 'admin') return 'admins';
+                                return 'users';
+                            };
+
+                            const collectionName = getCollectionName(user.role);
+                            console.log(`📁 Deleting from collection: ${collectionName}, UID: ${user.uid}`);
+
+                            await deleteDoc(doc(db, collectionName, user.uid));
+                            console.log(`✅ Successfully deleted from ${collectionName}`);
+
+                            try {
+                                await deleteDoc(doc(db, 'users', user.uid));
+                                console.log('✅ Successfully deleted from users backup');
+                            } catch (e) {
+                                console.log('ℹ️ No backup user doc to delete (this is okay)');
+                            }
+
+                            console.log('✅ Deletion complete!');
+                            Alert.alert('Success', `${user.name} has been deleted successfully`);
+                        } catch (error: any) {
+                            console.error('❌ ERROR deleting user:', error);
+
+                            let errorMessage = 'Failed to delete user. ';
+                            if (error.code === 'permission-denied') {
+                                errorMessage += 'Permission denied. Check Firestore rules.';
+                            } else {
+                                errorMessage += error.message || 'Unknown error';
+                            }
+
+                            Alert.alert('Error', errorMessage);
+                        }
+                    }
+                }
+            ]
         );
-
-        if (!confirmed) return;
-
-        console.log('🗑️ Starting deletion for user:', user);
-
-        try {
-            // Get the correct collection name based on role
-            const getCollectionName = (role: string) => {
-                if (role === 'resident') return 'residents';
-                if (role === 'security') return 'security_staff';
-                if (role === 'admin') return 'admins';
-                return 'users';
-            };
-
-            const collectionName = getCollectionName(user.role);
-            console.log(`📁 Deleting from collection: ${collectionName}, UID: ${user.uid}`);
-
-            // Delete from Firestore role-specific collection
-            await deleteDoc(doc(db, collectionName, user.uid));
-            console.log(`✅ Successfully deleted from ${collectionName}`);
-
-            // Also delete from backup 'users' collection (if exists)
-            try {
-                await deleteDoc(doc(db, 'users', user.uid));
-                console.log('✅ Successfully deleted from users backup');
-            } catch (e) {
-                console.log('ℹ️ No backup user doc to delete (this is okay)');
-            }
-
-            console.log('✅ Deletion complete!');
-            window.alert(`${user.name} has been deleted successfully`);
-        } catch (error: any) {
-            console.error('❌ ERROR deleting user:', error);
-
-            let errorMessage = 'Failed to delete user. ';
-            if (error.code === 'permission-denied') {
-                errorMessage += 'Permission denied. Check Firestore rules.';
-            } else {
-                errorMessage += error.message || 'Unknown error';
-            }
-
-            window.alert(errorMessage);
-        }
     };
 
     // Filter users by active tab (memoized for performance)
@@ -174,68 +179,89 @@ export default function UsersIndex() {
         security: users.filter(u => u.role === 'security').length,
     }), [users]);
 
+    const getUnpaidTotal = useCallback((residentId: string) => {
+        return allBills
+            .filter(b => b.residentId === residentId && b.status === 'Unpaid')
+            .reduce((sum, b) => sum + (b.amount || 0), 0);
+    }, [allBills]);
+
     /**
      * Render a single user card
      * Memoized to prevent unnecessary re-renders
      */
-    const renderItem = useCallback(({ item }: { item: UserProfile }) => (
-        <TouchableOpacity
-            activeOpacity={0.75}
-            onPress={() => router.push(`/(admin)/users/${item.uid}` as any)}
-            style={{ marginBottom: spacing.md }}
-        >
-            <Card style={{ ...styles.userCard, padding: spacing.md }}>
-                <View style={styles.userInfo}>
-                    {/* Avatar with first letter */}
-                    <View style={{
-                        ...styles.avatarContainer,
-                        backgroundColor: activeTab === 'resident' ? '#E8F5E9' : '#FFF3E0',
-                        borderRadius: borderRadius.full,
-                        marginRight: spacing.md
-                    }}>
-                        <Text style={{
-                            ...styles.avatarText,
-                            color: activeTab === 'resident' ? '#2E7D32' : '#EF6C00',
-                            fontSize: fontSize.xl
+    const renderItem = useCallback(({ item }: { item: UserProfile }) => {
+        const unpaidAmount = item.role === 'resident' ? getUnpaidTotal(item.uid) : 0;
+
+        return (
+            <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={() => router.push(`/(admin)/users/${item.uid}` as any)}
+                style={{ marginBottom: spacing.md }}
+            >
+                <Card style={{ ...styles.userCard, padding: spacing.md }}>
+                    <View style={styles.userInfo}>
+                        {/* Avatar with first letter */}
+                        <View style={{
+                            ...styles.avatarContainer,
+                            backgroundColor: activeTab === 'resident' ? '#E8F5E9' : '#FFF3E0',
+                            borderRadius: borderRadius.full,
+                            marginRight: spacing.md
                         }}>
-                            {item.name.charAt(0).toUpperCase()}
-                        </Text>
-                    </View>
-
-                    {/* User details */}
-                    <View style={styles.userDetails}>
-                        <Text style={{ ...styles.userName, fontSize: fontSize.base }}>
-                            {item.name}
-                        </Text>
-                        <Text style={{ ...styles.userEmail, fontSize: fontSize.sm }}>
-                            {item.email}
-                        </Text>
-                        {item.role === 'resident' && item.houseNo && (
-                            <Text style={{ ...styles.userMeta, fontSize: fontSize.xs }}>
-                                🏠 House: {item.houseNo}
+                            <Text style={{
+                                ...styles.avatarText,
+                                color: activeTab === 'resident' ? '#2E7D32' : '#EF6C00',
+                                fontSize: fontSize.xl
+                            }}>
+                                {item.name.charAt(0).toUpperCase()}
                             </Text>
-                        )}
-                        {item.role === 'security' && (
-                            <Text style={{ ...styles.userMeta, fontSize: fontSize.xs }}>
-                                Security Personnel
+                        </View>
+
+                        {/* User details */}
+                        <View style={styles.userDetails}>
+                            <Text style={{ ...styles.userName, fontSize: fontSize.base }}>
+                                {item.name}
                             </Text>
-                        )}
+                            <Text style={{ ...styles.userEmail, fontSize: fontSize.sm }}>
+                                {item.email}
+                            </Text>
+                            {item.role === 'resident' && item.houseNo && (
+                                <View>
+                                    <Text style={{ ...styles.userMeta, fontSize: fontSize.xs }}>
+                                        🏠 House: {item.houseNo}
+                                    </Text>
+                                    {unpaidAmount > 0 ? (
+                                        <Text style={{ ...styles.unpaidText, fontSize: fontSize.xs }}>
+                                            🔴 Unpaid: PKR {unpaidAmount.toLocaleString()}
+                                        </Text>
+                                    ) : (
+                                        <Text style={{ ...styles.paidText, fontSize: fontSize.xs }}>
+                                            🟢 All dues paid
+                                        </Text>
+                                    )}
+                                </View>
+                            )}
+                            {item.role === 'security' && (
+                                <Text style={{ ...styles.userMeta, fontSize: fontSize.xs }}>
+                                    Security Personnel
+                                </Text>
+                            )}
+                        </View>
+
+                        {/* Delete button — stops propagation so tap on bin doesn't open detail */}
+                        <TouchableOpacity
+                            style={{ ...styles.deleteButton, borderRadius: borderRadius.md, padding: spacing.sm }}
+                            onPress={(e) => { e.stopPropagation?.(); handleDeleteUser(item); }}
+                        >
+                            <Text style={styles.deleteButtonText}>🗑️</Text>
+                        </TouchableOpacity>
+
+                        {/* Chevron to hint at navigation */}
+                        <Text style={styles.chevron}>›</Text>
                     </View>
-
-                    {/* Delete button — stops propagation so tap on bin doesn't open detail */}
-                    <TouchableOpacity
-                        style={{ ...styles.deleteButton, borderRadius: borderRadius.md, padding: spacing.sm }}
-                        onPress={(e) => { e.stopPropagation?.(); handleDeleteUser(item); }}
-                    >
-                        <Text style={styles.deleteButtonText}>🗑️</Text>
-                    </TouchableOpacity>
-
-                    {/* Chevron to hint at navigation */}
-                    <Text style={styles.chevron}>›</Text>
-                </View>
-            </Card>
-        </TouchableOpacity>
-    ), [activeTab]);
+                </Card>
+            </TouchableOpacity>
+        );
+    }, [activeTab, getUnpaidTotal]);
 
     const keyExtractor = useCallback((item: UserProfile) => item.uid, []);
 
@@ -406,5 +432,15 @@ const styles = StyleSheet.create({
     },
     emptyText: {
         color: '#8E8E93'
+    },
+    unpaidText: {
+        color: '#DC2626',
+        fontWeight: '700',
+        marginTop: 2
+    },
+    paidText: {
+        color: '#16A34A',
+        fontWeight: '500',
+        marginTop: 2
     }
 });

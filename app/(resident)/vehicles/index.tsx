@@ -3,7 +3,7 @@
 
 import { Stack, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors, Spacing, Typography } from '../../../constants/designSystem';
 import { Button } from '../../../src/components/common/Button';
 import { Card } from '../../../src/components/common/Card';
@@ -36,16 +36,25 @@ export default function VehiclesIndex() {
     const handleDeleteVehicle = async (vehicle: RegisteredVehicle) => {
         if (!userProfile || !vehicle.id) return;
 
-        const confirmed = window.confirm(`Delete vehicle ${vehicle.vehicleNo}?`);
-        if (confirmed) {
-            const result = await deleteVehicle(vehicle.id, userProfile.uid);
-            if (result.success) {
-                window.alert('Vehicle deleted successfully');
-                // onSnapshot listener in AppDataContext will update the list automatically
-            } else {
-                window.alert('Error: ' + (result.error || 'Failed to delete vehicle'));
-            }
-        }
+        Alert.alert(
+            'Delete Vehicle',
+            `Delete vehicle ${vehicle.vehicleNo}?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        const result = await deleteVehicle(vehicle.id!, userProfile.uid);
+                        if (result.success) {
+                            Alert.alert('Success', 'Vehicle deleted successfully');
+                        } else {
+                            Alert.alert('Error', result.error || 'Failed to delete vehicle');
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     const formatTime = (timestamp: any): string => {

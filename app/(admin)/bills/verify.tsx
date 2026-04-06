@@ -1,33 +1,26 @@
 // Verify Payments Screen (Admin)
 // View and approve payment proofs
 
-import React, { useEffect, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Alert, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Button } from '../../../src/components/common/Button';
 import { Card } from '../../../src/components/common/Card';
-import { LoadingSpinner } from '../../../src/components/common/LoadingSpinner';
 import { StatusBadge } from '../../../src/components/common/StatusBadge';
+import { useAdminData } from '../../../src/contexts/AdminDataContext';
 import { useAuth } from '../../../src/contexts/AuthContext';
-import { getPendingBills, rejectPaymentProof, verifyPayment } from '../../../src/services/MonthlyBillingService';
-import { Bill } from '../../../src/types';
+import { rejectPaymentProof, verifyPayment } from '../../../src/services/MonthlyBillingService';
 
 export default function VerifyPaymentsScreen() {
     const { userProfile } = useAuth();
-    const [bills, setBills] = useState<Bill[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { bills: allBills } = useAdminData(); // BUG 6 fix: use AdminDataContext live data
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [processingId, setProcessingId] = useState<string | null>(null);
 
-    useEffect(() => {
-        loadPendingBills();
-    }, []);
-
-    const loadPendingBills = async () => {
-        setLoading(true);
-        const result = await getPendingBills();
-        setBills(result);
-        setLoading(false);
-    };
+    // Filter bills with pending proof from context — no Firestore reads needed
+    const bills = useMemo(
+        () => allBills.filter(b => b.status === 'Pending' && !!b.proofUrl),
+        [allBills]
+    );
 
     const handleApprove = async (billId: string) => {
         Alert.alert(
@@ -44,7 +37,7 @@ export default function VerifyPaymentsScreen() {
 
                         if (result.success) {
                             Alert.alert('Success', 'Payment approved successfully');
-                            loadPendingBills();
+                            // No reload needed — AdminDataContext auto-updates via onSnapshot
                         } else {
                             Alert.alert('Error', result.error || 'Failed to approve payment');
                         }
@@ -70,7 +63,7 @@ export default function VerifyPaymentsScreen() {
 
                         if (result.success) {
                             Alert.alert('Rejected', 'Payment proof rejected. Resident will need to upload again.');
-                            loadPendingBills();
+                            // No reload needed — AdminDataContext auto-updates via onSnapshot
                         } else {
                             Alert.alert('Error', result.error || 'Failed to reject payment');
                         }
@@ -80,9 +73,7 @@ export default function VerifyPaymentsScreen() {
         );
     };
 
-    if (loading) {
-        return <LoadingSpinner message="Loading pending payments..." />;
-    }
+    // No loading spinner — data is instantly available from AdminDataContext
 
     return (
         <View style={styles.container}>

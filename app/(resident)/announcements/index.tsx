@@ -19,7 +19,8 @@ export default function AnnouncementListScreen() {
         setTimeout(() => setRefreshing(false), 500);
     };
 
-    const getPriorityColor = (priority: string) => {
+    const getPriorityColor = (priority?: string) => {
+        if (!priority) return Colors.secondary[500];
         switch (priority.toLowerCase()) {
             case 'high': return Colors.error.main;
             case 'medium': return Colors.warning.main;
@@ -28,7 +29,8 @@ export default function AnnouncementListScreen() {
         }
     };
 
-    const getPriorityBgColor = (priority: string) => {
+    const getPriorityBgColor = (priority?: string) => {
+        if (!priority) return Colors.secondary[100];
         switch (priority.toLowerCase()) {
             case 'high': return Colors.error.light;
             case 'medium': return Colors.warning.light;
@@ -50,7 +52,7 @@ export default function AnnouncementListScreen() {
                     ]}
                 >
                     <Text style={[styles.priorityText, { color: getPriorityColor(item.priority) }]}>
-                        {item.priority.toUpperCase()}
+                        {(item.priority || 'INFO').toUpperCase()}
                     </Text>
                 </View>
                 <Text style={styles.date}>
