@@ -112,6 +112,12 @@ export default function ResidentHome() {
             color: '#6B7280',
         },
         {
+            title: 'AI Assistant',
+            icon: '🤖',
+            route: '/(resident)/chatbot',
+            color: '#0EA5E9',
+        },
+        {
             title: 'Change Password',
             icon: '🔑',
             route: '/(resident)/change-password',

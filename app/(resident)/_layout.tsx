@@ -101,6 +101,14 @@ export default function ResidentLayout() {
                 }}
             />
             <Tabs.Screen
+                name="chatbot"
+                options={{
+                    title: 'AI Assistant',
+                    href: null,
+                    headerShown: false,
+                }}
+            />
+            <Tabs.Screen
                 name="change-password"
                 options={{
                     title: 'Change Password',
