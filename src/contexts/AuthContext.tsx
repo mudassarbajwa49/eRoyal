@@ -1,7 +1,7 @@
 // Authentication Context Provider
 // Manages user authentication state and user profile across the app
 
-import { User as FirebaseUser, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { User as FirebaseUser, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '../../firebaseConfig';
@@ -171,6 +171,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return { success: false, error: error.message || 'Failed to update profile picture' };
         }
     };
+    
+    // Send Password Reset Email
+    const sendPasswordReset = async (email: string): Promise<ApiResponse> => {
+        try {
+            logger.log('AuthContext: Sending password reset email to:', email);
+            await sendPasswordResetEmail(auth, email);
+            logger.success('Password reset email sent successfully');
+            return {
+                success: true,
+                message: 'Password reset email sent. Please check your inbox.'
+            };
+        } catch (error: any) {
+            logger.error('Password reset error:', error);
+            let errorMessage = 'Failed to send password reset email';
+            
+            if (error.code === 'auth/user-not-found') {
+                errorMessage = 'No account found with this email';
+            } else if (error.code === 'auth/invalid-email') {
+                errorMessage = 'Invalid email format';
+            } else if (error.code === 'auth/too-many-requests') {
+                errorMessage = 'Too many requests. Please try again later.';
+            }
+            
+            return {
+                success: false,
+                error: errorMessage
+            };
+        }
+    };
 
 
     // Flag to prevent double-fetch when login() already loaded the profile
@@ -212,6 +241,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         logout,
         updateProfilePicture,
+        sendPasswordReset,
     };
 
     return (

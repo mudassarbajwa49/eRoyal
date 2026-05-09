@@ -262,6 +262,7 @@ export interface AuthContextType {
     login: (email: string, password: string) => Promise<ApiResponse>;
     logout: () => Promise<void>;
     updateProfilePicture: (imageUri: string) => Promise<ApiResponse>;
+    sendPasswordReset: (email: string) => Promise<ApiResponse>;
 }
 
 // ==========================================

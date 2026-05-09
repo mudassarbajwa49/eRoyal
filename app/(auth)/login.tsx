@@ -4,7 +4,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Image, KeyboardAvoidingView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors, Typography, Spacing, BorderRadius } from '../../constants/designSystem';
 import { Button } from '../../src/components/common/Button';
 import { Card } from '../../src/components/common/Card';
@@ -145,6 +145,13 @@ export default function LoginScreen() {
                             required
                         />
 
+                        <TouchableOpacity 
+                            onPress={() => router.push('/(auth)/forgot-password')}
+                            style={styles.forgotPasswordContainer}
+                        >
+                            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                        </TouchableOpacity>
+
                         <Button
                             title="Sign In"
                             onPress={handleLogin}
@@ -226,6 +233,16 @@ const styles = StyleSheet.create({
         maxWidth: 420,
         alignSelf: 'center',
         padding: Spacing['2xl'],
+    },
+    forgotPasswordContainer: {
+        alignSelf: 'flex-end',
+        marginBottom: Spacing.xl,
+        marginTop: -Spacing.xs,
+    },
+    forgotPasswordText: {
+        color: Colors.primary[600],
+        fontSize: Typography.fontSize.sm,
+        fontWeight: Typography.fontWeight.semibold,
     },
     loginButton: {
         marginTop: Spacing.md
