@@ -10,6 +10,17 @@
     "preview": {
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyC4c-baeB8brPgOpPcdqNH4Yr6kpWdadIE",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "eroyal-b0186.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "eroyal-b0186",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "eroyal-b0186.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "26626824054",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:26626824054:web:747c90a99f55aa0a92cc57",
+        "EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID": "G-21S8M6TCMS",
+        "EXPO_PUBLIC_GOOGLE_VISION_API_KEY": "AIzaSyC4c-baeB8brPgOpPcdqNH4Yr6kpWdadIE",
+        "EXPO_PUBLIC_GEMINI_API_KEY": "AIzaSyCibMPFgBpLQ_zoQVIbaHVAAA2fA-5WG78"
       }
     },
     "production": {}
