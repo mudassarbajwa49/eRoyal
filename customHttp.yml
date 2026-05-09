@@ -1,0 +1,5 @@
+customHttp:
+  - pattern: '</^[^.]+$|\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json|webp)$)([^.]+$)/>'
+    headers:
+      - key: Cache-Control
+        value: 'public, max-age=0, must-revalidate'
