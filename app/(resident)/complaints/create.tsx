@@ -2,6 +2,7 @@
 // Submit new complaint with optional photo
 
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -161,7 +162,7 @@ export default function CreateComplaintScreen() {
                                 </>
                             ) : (
                                 <TouchableOpacity style={styles.photoPlaceholder} onPress={pickImage}>
-                                    <Text style={styles.photoIcon}>📷</Text>
+                                    <Ionicons name="camera" size={48} color="#999" style={{ marginBottom: 8 }} />
                                     <Text style={styles.photoText}>Tap to add photo</Text>
                                 </TouchableOpacity>
                             )}
@@ -219,8 +220,8 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     categoryButtonActive: {
-        backgroundColor: '#007AFF',
-        borderColor: '#007AFF',
+        backgroundColor: '#0D9488',
+        borderColor: '#0D9488',
     },
     categoryButtonText: {
         fontSize: 14,

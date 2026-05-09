@@ -1,36 +1,16 @@
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
 /**
  * OCR Service
  *
- * Uses Google Cloud Vision API to detect license plate text from a photo URI.
+ * Uses Google Gemini API to detect license plate text from a photo URI.
  * Called by the security gate-entry screen when the guard taps the camera scan button.
- *
- * Flow:
- *  1. Convert the photo URI to a base64 string
- *  2. POST to Vision API TEXT_DETECTION endpoint
- *  3. Parse the response and return the best plate candidate or null
  */
 
-const VISION_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_VISION_API_KEY;
-const VISION_API_URL = `https://vision.googleapis.com/v1/images:annotate?key=${VISION_API_KEY}`;
+const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 
-/**
- * Convert a local file URI to a base64-encoded string.
- * Works on both React Native (fetch blob) and web.
- */
-async function uriToBase64(uri: string): Promise<string> {
-    const response = await fetch(uri);
-    const blob = await response.blob();
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            const result = reader.result as string;
-            // Strip the data URL prefix (e.g. "data:image/jpeg;base64,")
-            resolve(result.split(',')[1]);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-    });
-}
+// uriToBase64 removed: base64 string is now provided directly by Expo Camera.
 
 /**
  * License plate pattern — matches common Pakistani formats:
@@ -44,74 +24,50 @@ const PLATE_REGEX = /\b([A-Z]{2,4}[-\s]?\d{1,4})\b/i;
 /**
  * Detect a license plate in a photo.
  *
- * @param photoUri  Local URI of the captured photo (from expo-camera)
+ * @param base64Image  Base64 string of the captured photo
  * @returns The detected plate string (e.g. "ABC-1234"), or null if none found
  */
-export async function detectLicensePlate(photoUri: string): Promise<string | null> {
+export async function detectLicensePlate(base64Image: string): Promise<string | null> {
     try {
-        if (!VISION_API_KEY) {
-            console.warn('[OCR] EXPO_PUBLIC_GOOGLE_VISION_API_KEY is not set — skipping OCR');
+        if (!genAI) {
+            console.warn('[OCR] EXPO_PUBLIC_GEMINI_API_KEY is not set — skipping OCR');
             return null;
         }
+        const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
 
-        const base64Image = await uriToBase64(photoUri);
+        const prompt = "Extract the license plate number from this image. Return ONLY the alphanumeric characters of the license plate (e.g. ABC123). Do NOT include any hyphens, spaces, or other special characters. If there is no license plate or it is unreadable, return 'NONE'. Do not include any other text like vehicle model or make.";
 
-        const requestBody = {
-            requests: [
-                {
-                    image: { content: base64Image },
-                    features: [{ type: 'TEXT_DETECTION', maxResults: 10 }],
-                    imageContext: {
-                        languageHints: ['en'],
-                    },
-                },
-            ],
-        };
-
-        const response = await fetch(VISION_API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody),
-        });
-
-        if (!response.ok) {
-            const errBody = await response.text();
-            if (response.status === 403) {
-                console.error(
-                    '[OCR] Vision API 403 Forbidden — the Cloud Vision API may not be enabled for this key.\n' +
-                    'Fix: https://console.cloud.google.com/apis/library/vision.googleapis.com\n' +
-                    'Also check API key restrictions under APIs & Services → Credentials.',
-                    errBody
-                );
-            } else {
-                console.error('[OCR] Vision API error:', response.status, errBody);
+        const imageParts = [
+            {
+                inlineData: {
+                    data: base64Image,
+                    mimeType: 'image/jpeg'
+                }
             }
-            return null;
-        }
+        ];
 
-        const data = await response.json();
-        const annotations = data?.responses?.[0]?.textAnnotations;
+        const result = await model.generateContent([prompt, ...imageParts]);
+        const response = await result.response;
+        const text = response.text().trim();
 
-        if (!annotations || annotations.length === 0) {
+        console.log('[OCR] Gemini response text:', text);
+
+        if (!text || text === 'NONE' || text === '') {
             console.log('[OCR] No text found in image');
             return null;
         }
 
-        // The first annotation is the full detected text block
-        const fullText: string = annotations[0].description ?? '';
-        console.log('[OCR] Raw Vision text:', fullText);
-
         // Try to find a plate-like pattern in the text
-        const match = fullText.match(PLATE_REGEX);
+        const match = text.match(PLATE_REGEX);
         if (match) {
-            const plate = match[1].toUpperCase().replace(/\s+/, '-');
+            const plate = match[1].replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
             console.log('[OCR] Plate detected:', plate);
             return plate;
         }
 
         // Fallback: if text is short and looks alphanumeric, return it as-is
-        const trimmed = fullText.trim().replace(/\n/g, ' ');
-        if (trimmed.length >= 4 && trimmed.length <= 12 && /^[A-Z0-9\-\s]+$/i.test(trimmed)) {
+        const trimmed = text.replace(/[^a-zA-Z0-9]/g, '');
+        if (trimmed.length >= 3 && trimmed.length <= 12 && /^[A-Z0-9]+$/i.test(trimmed)) {
             console.log('[OCR] Fallback plate text:', trimmed.toUpperCase());
             return trimmed.toUpperCase();
         }

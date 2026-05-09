@@ -3,6 +3,7 @@
 
 import React from 'react';
 import { StyleSheet, Text, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
+import { BorderRadius, Colors, Spacing, Typography } from '../../../constants/designSystem';
 
 interface InputProps extends TextInputProps {
     label?: string;
@@ -31,7 +32,7 @@ export const Input: React.FC<InputProps> = ({
                     styles.input,
                     error && styles.inputError
                 ]}
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.text.tertiary}
                 {...textInputProps}
             />
             {error && <Text style={styles.errorText}>{error}</Text>}
@@ -41,33 +42,36 @@ export const Input: React.FC<InputProps> = ({
 
 const styles = StyleSheet.create({
     container: {
-        marginBottom: 16
+        marginBottom: Spacing.lg
     },
     label: {
-        fontSize: 14,
-        fontWeight: '500',
-        color: '#333',
-        marginBottom: 8
+        fontSize: Typography.fontSize.sm,
+        fontWeight: Typography.fontWeight.medium,
+        color: Colors.text.primary,
+        marginBottom: Spacing.sm
     },
     required: {
-        color: '#FF3B30'
+        color: Colors.error.main
     },
     input: {
-        borderWidth: 1,
-        borderColor: '#DDD',
-        borderRadius: 8,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        fontSize: 16,
-        backgroundColor: '#FFFFFF',
-        minHeight: 48
+        borderWidth: 1.5, // Slightly thicker for modern look
+        borderColor: Colors.border.main,
+        borderRadius: BorderRadius.lg,
+        paddingHorizontal: Spacing.lg,
+        paddingVertical: Spacing.md,
+        fontSize: Typography.fontSize.base,
+        backgroundColor: Colors.background.surface,
+        minHeight: 52, // Taller inputs are more premium
+        color: Colors.text.primary,
     },
     inputError: {
-        borderColor: '#FF3B30'
+        borderColor: Colors.error.main,
+        backgroundColor: Colors.error.light,
     },
     errorText: {
-        color: '#FF3B30',
-        fontSize: 12,
-        marginTop: 4
+        color: Colors.error.main,
+        fontSize: Typography.fontSize.xs,
+        marginTop: Spacing.xs,
+        fontWeight: Typography.fontWeight.medium,
     }
 });

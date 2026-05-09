@@ -230,7 +230,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                     const tb = b.createdAt?.toMillis?.() ?? 0;
                     return tb - ta;
                 });
-                setApprovedListings(list);
+                // Exclude the current resident's own listings — they appear in "My Listings" only
+                setApprovedListings(list.filter(l => l.postedBy !== uid));
                 if (!approvedDone) { approvedDone = true; checkListingsDone(); }
             }, (err) => {
                 console.error('[AppData] approvedListings listener error:', err);

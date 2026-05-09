@@ -101,3 +101,27 @@ export const uploadComplaintImage = async (
     return uploadImage(blob, folder);
 };
 
+/**
+ * Upload / replace a resident's profile picture
+ * Path: profiles/{userId}/profile  (fixed path — overwrites the old image)
+ * Storage rules already allow create+update under profiles/{userId}/{fileName}
+ */
+export const uploadProfilePicture = async (
+    imageUri: string,
+    userId: string
+): Promise<{ url: string; fileName: string }> => {
+    try {
+        const blob = await uriToBlob(imageUri);
+        const filePath = `profiles/${userId}/profile`;
+        const storageRef = ref(storage, filePath);
+
+        await uploadBytes(storageRef, blob);
+        const url = await getDownloadURL(storageRef);
+
+        return { url, fileName: filePath };
+    } catch (error) {
+        logger.error('Error uploading profile picture:', error);
+        throw error;
+    }
+};
+

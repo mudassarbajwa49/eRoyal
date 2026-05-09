@@ -1,9 +1,11 @@
 // Resident Bills Index
 // Modern bills interface with tabs and enhanced cards
 
+import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Colors } from '../../../constants/designSystem';
 import { BillCard } from '../../../src/components/bills/BillCard';
 import { SkeletonLoader } from '../../../src/components/common/SkeletonLoader';
 import { useAppData } from '../../../src/contexts/AppDataContext';
@@ -104,7 +106,7 @@ export default function BillsIndex() {
                     }
                     ListEmptyComponent={
                         <View style={styles.emptyState}>
-                            <Text style={styles.emptyIcon}>💳</Text>
+                            <Ionicons name="card" size={48} color={Colors.text.tertiary} style={{ marginBottom: 12 }} />
                             <Text style={[styles.emptyText, { fontSize: fontSize.xl }]}>No bills found</Text>
                             <Text style={[styles.emptySubtext, { fontSize: fontSize.base }]}>
                                 {filter !== 'all'
@@ -150,7 +152,7 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     activeFilterText: {
-        color: '#007AFF',
+        color: '#0D9488',
         fontWeight: '600',
     },
     activeIndicator: {
@@ -159,7 +161,7 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         height: 3,
-        backgroundColor: '#007AFF',
+        backgroundColor: '#0D9488',
         borderTopLeftRadius: borderRadius.sm,
         borderTopRightRadius: borderRadius.sm,
     },

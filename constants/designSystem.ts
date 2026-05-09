@@ -4,21 +4,21 @@
  */
 
 export const Colors = {
-    // Primary Colors - Royal Blue/Deep Teal
+    // Primary Colors - Deep Teal (#0D9488)
     primary: {
-        50: '#EFF6FF',
-        100: '#DBEAFE',
-        200: '#BFDBFE',
-        300: '#93C5FD',
-        400: '#60A5FA',
-        500: '#3B82F6',
-        600: '#1E40AF', // Main primary
-        700: '#1E3A8A',
-        800: '#1E3A8A',
-        900: '#1E3A8A',
+        50: '#F0FDFA',
+        100: '#CCFBF1',
+        200: '#99F6E4',
+        300: '#5EEAD4',
+        400: '#2DD4BF',
+        500: '#14B8A6',
+        600: '#0D9488', // Main primary (Requested Teal)
+        700: '#0F766E', // Deeper premium teal
+        800: '#115E59',
+        900: '#134E4A',
     },
 
-    // Secondary Colors
+    // Secondary Colors - Refined Greys
     secondary: {
         50: '#F8FAFC',
         100: '#F1F5F9',
@@ -32,46 +32,48 @@ export const Colors = {
         900: '#0F172A',
     },
 
-    // Semantic Colors
+    // Semantic Colors (Softer for premium feel)
     success: {
-        light: '#D1FAE5',
+        light: '#ECFDF5',
         main: '#10B981',
-        dark: '#059669',
+        dark: '#047857',
     },
     warning: {
-        light: '#FEF3C7',
+        light: '#FFFBEB',
         main: '#F59E0B',
-        dark: '#D97706',
+        dark: '#B45309',
     },
     error: {
-        light: '#FEE2E2',
+        light: '#FEF2F2',
         main: '#EF4444',
-        dark: '#DC2626',
+        dark: '#B91C1C',
     },
     info: {
-        light: '#DBEAFE',
+        light: '#EFF6FF',
         main: '#3B82F6',
-        dark: '#2563EB',
+        dark: '#1D4ED8',
     },
 
     // UI Colors
     background: {
-        primary: '#FFFFFF',
-        secondary: '#F5F7FA',
-        tertiary: '#F8FAFC',
+        primary: '#FFFFFF', // Pure white for cards/surfaces
+        secondary: '#F8FAFC', // Very soft blue-grey for main background
+        tertiary: '#F1F5F9',
+        surface: '#FFFFFF',
+        surfaceVariant: '#F8FAFC',
     },
 
     text: {
-        primary: '#1F2937',
-        secondary: '#6B7280',
-        tertiary: '#9CA3AF',
+        primary: '#0F172A', // Slate 900
+        secondary: '#475569', // Slate 600
+        tertiary: '#94A3B8', // Slate 400
         inverse: '#FFFFFF',
     },
 
     border: {
-        light: '#F3F4F6',
-        main: '#E5E7EB',
-        dark: '#D1D5DB',
+        light: '#F1F5F9',
+        main: '#E2E8F0',
+        dark: '#CBD5E1',
     },
 
     // Feature-specific colors
@@ -84,15 +86,15 @@ export const Colors = {
 
 export const Typography = {
     fontFamily: {
-        heading: 'System', // Will use system font (San Francisco on iOS, Roboto on Android)
+        heading: 'System', // Will use system font
         body: 'System',
     },
 
     fontSize: {
-        xs: 11,
-        sm: 13,
-        base: 15,
-        lg: 17,
+        xs: 12,
+        sm: 14,
+        base: 16,
+        lg: 18,
         xl: 20,
         '2xl': 24,
         '3xl': 30,
@@ -118,58 +120,58 @@ export const Spacing = {
     sm: 8,
     md: 12,
     lg: 16,
-    xl: 20,
-    '2xl': 24,
-    '3xl': 32,
-    '4xl': 40,
-    '5xl': 48,
+    xl: 24,
+    '2xl': 32,
+    '3xl': 40,
+    '4xl': 48,
+    '5xl': 64,
 };
 
 export const BorderRadius = {
-    sm: 6,
-    md: 8,
-    lg: 12,
-    xl: 16,
-    '2xl': 20,
+    sm: 8,
+    md: 12,
+    lg: 16,
+    xl: 24,
+    '2xl': 32,
     full: 9999,
 };
 
 export const Shadows = {
     sm: {
-        shadowColor: '#000',
+        shadowColor: '#0F172A',
         shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
+        shadowOpacity: 0.04,
         shadowRadius: 2,
         elevation: 1,
     },
     md: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
         elevation: 2,
     },
     lg: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.08,
+        shadowRadius: 15,
         elevation: 4,
     },
     xl: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.12,
-        shadowRadius: 16,
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 20 },
+        shadowOpacity: 0.1,
+        shadowRadius: 25,
         elevation: 8,
     },
 };
 
 export const Gradients = {
     primary: ['#1E40AF', '#3B82F6'],
-    success: ['#059669', '#10B981'],
-    warning: ['#D97706', '#F59E0B'],
-    error: ['#DC2626', '#EF4444'],
+    success: ['#047857', '#10B981'],
+    warning: ['#B45309', '#F59E0B'],
+    error: ['#B91C1C', '#EF4444'],
 };
 
 // Helper function to get time-based greeting

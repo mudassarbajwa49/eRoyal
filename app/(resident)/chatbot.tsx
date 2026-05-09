@@ -4,8 +4,11 @@
  * Powered by Google Gemini API (Free Tier)
  */
 
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { BackHandler } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
     ActivityIndicator,
     Animated,
@@ -38,11 +41,11 @@ const WELCOME_MESSAGE: DisplayMessage = {
 
 // ── Quick Suggestion Chips ─────────────────────────────────────
 const QUICK_SUGGESTIONS = [
-    '🏠 Society Rules',
-    '💳 Bill Payment Help',
-    '🛠 File a Complaint',
-    '🚗 Vehicle Registration',
-    '🏪 Marketplace Guide',
+    'Society Rules',
+    'Bill Payment Help',
+    'File a Complaint',
+    'Vehicle Registration',
+    'Marketplace Guide',
 ];
 
 // ── Typing Indicator Component ─────────────────────────────────
@@ -102,7 +105,7 @@ function TypingIndicator() {
     return (
         <View style={styles.typingContainer}>
             <View style={styles.aiBubbleAvatar}>
-                <Text style={styles.avatarEmoji}>🤖</Text>
+                <Ionicons name="sparkles" size={18} color={Colors.primary[600]} />
             </View>
             <View style={[styles.messageBubble, styles.aiBubble, styles.typingBubble]}>
                 <View style={styles.typingDots}>
@@ -161,7 +164,7 @@ function MessageBubble({
             {/* AI Avatar */}
             {!isUser && (
                 <View style={styles.aiBubbleAvatar}>
-                    <Text style={styles.avatarEmoji}>🤖</Text>
+                    <Ionicons name="sparkles" size={18} color={Colors.primary[600]} />
                 </View>
             )}
 
@@ -206,11 +209,28 @@ export default function ChatbotScreen() {
     const [error, setError] = useState<string | null>(null);
     const [showSuggestions, setShowSuggestions] = useState(true);
     const flatListRef = useRef<FlatList>(null);
+    const insets = useSafeAreaInsets();
 
     const userName = userProfile?.name || 'Resident';
 
     // Check if API is configured
     const isApiConfigured = geminiService.isConfigured();
+
+    // Handle Android hardware back button
+    useEffect(() => {
+        if (Platform.OS === 'android') {
+            const onBackPress = () => {
+                if (router.canGoBack()) {
+                    router.back();
+                } else {
+                    router.replace('/(resident)/home');
+                }
+                return true;
+            };
+            const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+            return () => subscription.remove();
+        }
+    }, [router]);
 
     /**
      * Scroll to the bottom of the chat
@@ -261,7 +281,7 @@ export default function ChatbotScreen() {
                 const errorMessage: DisplayMessage = {
                     id: `error_${Date.now()}`,
                     role: 'model',
-                    text: `⚠️ ${err.message || 'Something went wrong. Please try again.'}`,
+                    text: `Error: ${err.message || 'Something went wrong. Please try again.'}`,
                     timestamp: new Date(),
                 };
                 setMessages((prev) => [...prev, errorMessage]);
@@ -300,16 +320,25 @@ export default function ChatbotScreen() {
         <KeyboardAvoidingView
             style={styles.container}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 40 : 0}
         >
             {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <Text style={styles.backIcon}>←</Text>
+            <View style={[styles.header, { paddingTop: Math.max(insets.top, Platform.OS === 'ios' ? 54 : 12) }]}>
+                <TouchableOpacity 
+                    onPress={() => {
+                        if (router.canGoBack()) {
+                            router.back();
+                        } else {
+                            router.replace('/(resident)/home');
+                        }
+                    }} 
+                    style={styles.backButton}
+                >
+                    <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
                 </TouchableOpacity>
                 <View style={styles.headerCenter}>
                     <View style={styles.headerAvatar}>
-                        <Text style={styles.headerAvatarEmoji}>🤖</Text>
+                        <Ionicons name="sparkles" size={24} color={Colors.primary[600]} />
                         <View style={styles.onlineDot} />
                     </View>
                     <View>
@@ -320,7 +349,7 @@ export default function ChatbotScreen() {
                     </View>
                 </View>
                 <TouchableOpacity onPress={handleClearChat} style={styles.clearButton}>
-                    <Text style={styles.clearIcon}>🔄</Text>
+                    <Ionicons name="refresh" size={20} color="#FFFFFF" />
                 </TouchableOpacity>
             </View>
 
@@ -328,7 +357,7 @@ export default function ChatbotScreen() {
             {!isApiConfigured && (
                 <View style={styles.warningBanner}>
                     <Text style={styles.warningText}>
-                        ⚠️ Gemini API key not configured. Please add your key to the .env file.
+                        Gemini API key not configured. Please add your key to the .env file.
                     </Text>
                 </View>
             )}
@@ -397,7 +426,7 @@ export default function ChatbotScreen() {
                         {isLoading ? (
                             <ActivityIndicator size="small" color="#FFFFFF" />
                         ) : (
-                            <Text style={styles.sendIcon}>➤</Text>
+                            <Ionicons name="send" size={18} color="#FFFFFF" />
                         )}
                     </TouchableOpacity>
                 </View>
@@ -419,7 +448,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: Colors.primary[600],
-        paddingTop: Platform.OS === 'ios' ? 54 : 12,
         paddingBottom: 14,
         paddingHorizontal: 16,
         ...Shadows.md,

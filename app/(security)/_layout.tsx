@@ -3,6 +3,7 @@
 
 import { Stack, useRouter } from 'expo-router';
 import { StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { Colors, Typography } from '../../constants/designSystem';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { SecurityDataProvider } from '../../src/contexts/SecurityDataContext';
 
@@ -20,12 +21,14 @@ export default function SecurityLayout() {
             <Stack
                 screenOptions={{
                     headerStyle: {
-                        backgroundColor: '#FF9500'
+                        backgroundColor: Colors.primary[600]
                     },
-                    headerTintColor: '#fff',
+                    headerTintColor: Colors.text.inverse,
                     headerTitleStyle: {
-                        fontWeight: '600'
+                        fontWeight: Typography.fontWeight.semibold,
+                        fontSize: Typography.fontSize.lg,
                     },
+                    gestureEnabled: false,
                     headerRight: () => (
                         <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
                             <Text style={styles.logoutText}>Logout</Text>
@@ -35,7 +38,7 @@ export default function SecurityLayout() {
             >
                 <Stack.Screen
                     name="gate-entry"
-                    options={{ title: 'Gate Entry System' }}
+                    options={{ title: '🔐 Gate Control', gestureEnabled: false }}
                 />
             </Stack>
         </SecurityDataProvider>
@@ -44,11 +47,15 @@ export default function SecurityLayout() {
 
 const styles = StyleSheet.create({
     logoutButton: {
-        marginRight: 16
+        marginRight: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 6,
+        borderRadius: 8,
+        backgroundColor: 'rgba(255,255,255,0.2)',
     },
     logoutText: {
         color: '#fff',
-        fontSize: 16,
-        fontWeight: '500'
+        fontSize: 14,
+        fontWeight: '600'
     }
 });

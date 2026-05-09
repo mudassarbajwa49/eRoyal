@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { ActivityIndicator, StyleProp, StyleSheet, Text, TextStyle, TouchableOpacity, ViewStyle } from 'react-native';
-import { BorderRadius, Colors, Spacing, Typography } from '../../../constants/designSystem';
+import { BorderRadius, Colors, Spacing, Typography, Shadows } from '../../../constants/designSystem';
 
 interface ButtonProps {
     title: string;
@@ -75,23 +75,24 @@ export const Button: React.FC<ButtonProps> = ({
 
 const styles = StyleSheet.create({
     button: {
-        paddingVertical: Spacing.md,
+        paddingVertical: Spacing.md + 2, // Slightly taller
         paddingHorizontal: Spacing.xl,
-        borderRadius: BorderRadius.md,
+        borderRadius: BorderRadius.full, // Pill-shaped buttons look more premium
         alignItems: 'center',
         justifyContent: 'center',
-        minHeight: 48,
+        minHeight: 52, // Better touch target
     },
     fullWidth: {
         width: '100%',
     },
     primaryButton: {
         backgroundColor: Colors.primary[600],
+        ...Shadows.sm, // Subtle shadow for primary button
     },
     secondaryButton: {
-        backgroundColor: Colors.background.primary,
-        borderWidth: 1,
-        borderColor: Colors.primary[600],
+        backgroundColor: Colors.background.surface,
+        borderWidth: 1.5, // Slightly thicker border
+        borderColor: Colors.border.main,
     },
     dangerButton: {
         backgroundColor: Colors.error.main,
@@ -100,16 +101,18 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.success.main,
     },
     disabledButton: {
-        opacity: 0.5,
+        opacity: 0.6,
     },
     buttonText: {
         color: Colors.text.inverse,
         fontSize: Typography.fontSize.base,
         fontWeight: Typography.fontWeight.semibold,
+        letterSpacing: 0.3, // Touch of elegance
     },
     secondaryText: {
-        color: Colors.primary[600],
+        color: Colors.text.primary,
         fontSize: Typography.fontSize.base,
         fontWeight: Typography.fontWeight.semibold,
+        letterSpacing: 0.3,
     },
 });

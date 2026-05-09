@@ -1,7 +1,7 @@
 // Resident Group Layout
-// Modern layout with clean bottom tab navigation
+// Uses Stack navigation to enable native swipe-to-go-back gestures across all screens
 
-import { Tabs, useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { Colors, Spacing, Typography } from '../../constants/designSystem';
 import { useAuth } from '../../src/contexts/AuthContext';
@@ -16,7 +16,7 @@ export default function ResidentLayout() {
     };
 
     return (
-        <Tabs
+        <Stack
             screenOptions={{
                 headerStyle: {
                     backgroundColor: Colors.primary[600],
@@ -31,109 +31,73 @@ export default function ResidentLayout() {
                         <Text style={styles.logoutText}>Logout</Text>
                     </TouchableOpacity>
                 ),
-                tabBarActiveTintColor: Colors.primary[600],
-                tabBarInactiveTintColor: Colors.text.tertiary,
-                tabBarStyle: {
-                    backgroundColor: Colors.background.primary,
-                    borderTopColor: Colors.border.light,
-                    borderTopWidth: 1,
-                    height: 60,
-                    paddingBottom: 8,
-                    paddingTop: 8,
-                },
-                tabBarLabelStyle: {
-                    fontSize: Typography.fontSize.xs,
-                    fontWeight: Typography.fontWeight.medium,
-                },
+                gestureEnabled: true,
+                fullScreenGestureEnabled: true,
+                animation: 'slide_from_right',
             }}
         >
-            <Tabs.Screen
+            <Stack.Screen
                 name="home"
                 options={{
                     title: 'Home',
-                    tabBarIcon: ({ color, focused }) => (
-                        <Text style={[styles.icon, { opacity: focused ? 1 : 0.6 }]}>🏠</Text>
-                    ),
+                    headerLeft: () => null, // Root screen has no back button
                 }}
             />
-            <Tabs.Screen
-                name="announcements"
-                options={{
-                    title: 'Announcements',
-                    href: null,
-                    headerShown: false,
-                }}
-            />
-            <Tabs.Screen
+            
+            {/* All nested routes are stacks themselves, so we hide the parent stack header here 
+                to avoid double headers. The swipe back will work because they are pushed onto 
+                this parent stack. */}
+            <Stack.Screen
                 name="bills"
-                options={{
-                    title: 'Bills',
-                    tabBarIcon: ({ color, focused }) => (
-                        <Text style={[styles.icon, { opacity: focused ? 1 : 0.6 }]}>💵</Text>
-                    ),
-                    headerShown: false,
-                }}
+                options={{ headerShown: false }}
             />
-            <Tabs.Screen
+            <Stack.Screen
                 name="complaints"
-                options={{
-                    title: 'Complaints',
-                    tabBarIcon: ({ color, focused }) => (
-                        <Text style={[styles.icon, { opacity: focused ? 1 : 0.6 }]}>🛠️</Text>
-                    ),
-                    headerShown: false,
-                }}
+                options={{ headerShown: false }}
             />
-            <Tabs.Screen
+            <Stack.Screen
                 name="marketplace"
-                options={{
-                    title: 'Marketplace',
-                    href: null,
-                    headerShown: false,
-                }}
+                options={{ headerShown: false }}
             />
-            <Tabs.Screen
+            <Stack.Screen
                 name="vehicles"
-                options={{
-                    title: 'Vehicles',
-                    href: null,
-                    headerShown: false,
-                }}
+                options={{ headerShown: false }}
             />
-            <Tabs.Screen
+            <Stack.Screen
+                name="announcements"
+                options={{ headerShown: false }}
+            />
+
+            {/* Direct screens */}
+            <Stack.Screen
                 name="chatbot"
                 options={{
                     title: 'AI Assistant',
-                    href: null,
                     headerShown: false,
                 }}
             />
-            <Tabs.Screen
+            <Stack.Screen
                 name="change-password"
                 options={{
                     title: 'Change Password',
-                    href: null,
                     headerShown: true,
                 }}
             />
-        </Tabs>
+        </Stack>
     );
 }
 
 const styles = StyleSheet.create({
     logoutButton: {
-        marginRight: Spacing.lg,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.xs,
-        borderRadius: 6,
+        marginRight: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 6,
+        borderRadius: 8,
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
     },
     logoutText: {
-        color: Colors.text.inverse,
-        fontSize: Typography.fontSize.base,
-        fontWeight: Typography.fontWeight.medium,
-    },
-    icon: {
-        fontSize: 24,
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '600',
     },
 });

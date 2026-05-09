@@ -29,6 +29,7 @@ import {
     View,
 } from 'react-native';
 import { db } from '../../../firebaseConfig';
+import { Avatar } from '../../../src/components/common/Avatar';
 import { Card } from '../../../src/components/common/Card';
 import { LoadingSpinner } from '../../../src/components/common/LoadingSpinner';
 import { useAdminData } from '../../../src/contexts/AdminDataContext';
@@ -221,11 +222,13 @@ export default function UserDetailScreen() {
                 {/* ── Profile Card ─────────────────────────────────────────── */}
                 <Card style={styles.profileCard}>
                     <View style={styles.profileHeader}>
-                        <View style={[styles.avatar, { backgroundColor: isResident ? '#DCFCE7' : '#FFF3E0' }]}>
-                            <Text style={[styles.avatarLetter, { color: isResident ? '#16A34A' : '#EF6C00' }]}>
-                                {profile?.name?.charAt(0)?.toUpperCase() || '?'}
-                            </Text>
-                        </View>
+                        {/* Avatar — shows profile photo if available, otherwise initials */}
+                        <Avatar
+                            name={profile?.name || '?'}
+                            imageUrl={profile?.profilePictureUrl ?? undefined}
+                            size="xl"
+                            style={{ marginRight: 16 }}
+                        />
                         <View style={styles.profileMeta}>
                             <Text style={styles.profileName}>{profile?.name || 'Unknown'}</Text>
                             <Text style={styles.profileEmail}>{profile?.email}</Text>
@@ -474,18 +477,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 16,
     },
-    avatar: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 16,
-    },
-    avatarLetter: {
-        fontSize: 28,
-        fontWeight: '700',
-    },
     profileMeta: {
         flex: 1,
         gap: 4,
@@ -587,7 +578,7 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
     tabBtnActive: {
-        backgroundColor: '#007AFF',
+        backgroundColor: '#0D9488',
     },
     tabText: {
         fontSize: 11,
@@ -618,7 +609,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     countBadge: {
-        backgroundColor: '#007AFF',
+        backgroundColor: '#0D9488',
         borderRadius: 10,
         paddingHorizontal: 8,
         paddingVertical: 2,

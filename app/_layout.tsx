@@ -83,14 +83,16 @@ function RootLayoutNav() {
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
-        animationDuration: 250,
+        animationDuration: 220,
+        gestureEnabled: true,
+        fullScreenGestureEnabled: true,
         contentStyle: { backgroundColor: '#F5F7FA' }
       }}
     >
-      <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(auth)" options={{ gestureEnabled: false }} />
       <Stack.Screen name="(admin)" />
       <Stack.Screen name="(resident)" />
-      <Stack.Screen name="(security)" />
+      <Stack.Screen name="(security)" options={{ gestureEnabled: false }} />
     </Stack>
   );
 }

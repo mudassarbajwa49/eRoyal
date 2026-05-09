@@ -1,6 +1,7 @@
 // Resident Marketplace Index
 // Modern marketplace with grid layout and filters
 
+import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -105,7 +106,7 @@ export default function MarketplaceIndex() {
                     }
                     ListEmptyComponent={
                         <View style={styles.emptyState}>
-                            <Text style={styles.emptyIcon}>🏪</Text>
+                            <Ionicons name="storefront" size={48} color={Colors.text.tertiary} style={{ marginBottom: 12 }} />
                             <Text style={styles.emptyText}>
                                 {activeTab === 'browse'
                                     ? 'No properties available'

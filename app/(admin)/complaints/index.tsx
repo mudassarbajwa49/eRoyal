@@ -7,7 +7,7 @@
 
 import { useRouter } from 'expo-router';
 import React, { useCallback, useMemo } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View, SafeAreaView } from 'react-native';
 import { ComplaintCard } from '../../../src/components/complaints/ComplaintCard';
 import { useAdminData } from '../../../src/contexts/AdminDataContext';
 import { useBreakpoint } from '../../../src/hooks/useResponsive';
@@ -58,7 +58,7 @@ export default function ComplaintsIndex() {
 
 
     return (
-        <>
+        <View style={styles.screen}>
             {/* Header */}
             <View style={{ ...styles.header, padding: spacing.lg }}>
                 <Text style={{ ...styles.headerTitle, fontSize: breakpoint.mobile ? fontSize['2xl'] : fontSize['3xl'] }}>
@@ -129,6 +129,7 @@ export default function ComplaintsIndex() {
                 data={filteredComplaints}
                 renderItem={renderComplaint}
                 keyExtractor={keyExtractor}
+                style={styles.list}
                 contentContainerStyle={{ padding: spacing.lg }}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 ListEmptyComponent={
@@ -146,11 +147,19 @@ export default function ComplaintsIndex() {
                 windowSize={10}
                 initialNumToRender={8}
             />
-        </>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
+    screen: {
+        flex: 1,
+        backgroundColor: '#F5F7FA',
+    },
+    list: {
+        flex: 1,
+        backgroundColor: '#F5F7FA',
+    },
     header: {
         backgroundColor: '#fff',
         borderBottomWidth: 1,
@@ -178,14 +187,14 @@ const styles = StyleSheet.create({
         borderBottomColor: 'transparent',
     },
     activeTab: {
-        borderBottomColor: '#007AFF',
+        borderBottomColor: '#0D9488',
     },
     tabText: {
         fontWeight: '500',
         color: '#666',
     },
     activeTabText: {
-        color: '#007AFF',
+        color: '#0D9488',
         fontWeight: '600',
     },
     emptyState: {

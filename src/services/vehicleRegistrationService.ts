@@ -18,10 +18,10 @@ import { ApiResponse, RegisteredVehicle, RegisteredVehicleType } from '../types'
 import { uploadVehicleImage } from './FirebaseStorageService';
 
 /**
- * Normalize vehicle number (uppercase + trim)
+ * Normalize vehicle number (uppercase, remove non-alphanumeric characters)
  */
 export const normalizeVehicleNumber = (vehicleNo: string): string => {
-    return vehicleNo.trim().toUpperCase();
+    return vehicleNo.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
 };
 
 /**

@@ -4,6 +4,7 @@
 // All vehicle data is live via SecurityDataContext — no getDocs() round-trips
 
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Alert,
@@ -14,17 +15,20 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View
+    View,
+    useWindowDimensions
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '../../src/components/common/Button';
 import { Card } from '../../src/components/common/Card';
 import { Input } from '../../src/components/common/Input';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useSecurityData } from '../../src/contexts/SecurityDataContext';
+import { Colors } from '../../constants/designSystem';
 
 import { logVehicleEntry, logVehicleExit, uploadEntryPhoto } from '../../src/services/VehicleEntryLogService';
-// import { detectLicensePlate } from '../../src/services/ocrService'; // OCR disabled — re-enable when Vision API is configured
-// import { normalizeVehicleNumber } from '../../src/services/vehicleRegistrationService'; // OCR disabled
+import { detectLicensePlate } from '../../src/services/ocrService';
+import { normalizeVehicleNumber } from '../../src/services/vehicleRegistrationService';
 import { RegisteredVehicle, VehicleLog } from '../../src/types';
 
 type TabType = 'resident' | 'visitor' | 'exit';
@@ -61,9 +65,15 @@ function CameraSection({
     accentColor, permission, requestPermission, cameraRef,
     zoom, setZoom, capturedUri, setCapturedUri, capturing, onCapture,
 }: CameraSectionProps) {
+    const { height } = useWindowDimensions();
+    const cameraHeightStyle = {
+        minHeight: 180,
+        maxHeight: 300,
+        height: Math.max(180, Math.min(300, height * 0.35))
+    };
     if (!permission) {
         return (
-            <View style={styles.cameraContainer}>
+            <View style={[styles.cameraContainer, cameraHeightStyle]}>
                 <Text style={styles.cameraStatusText}>Loading camera...</Text>
             </View>
         );
@@ -71,8 +81,8 @@ function CameraSection({
 
     if (!permission.granted) {
         return (
-            <View style={[styles.cameraContainer, { borderColor: accentColor + '55' }]}>
-                <Text style={styles.cameraIcon}>📷</Text>
+            <View style={[styles.cameraContainer, cameraHeightStyle, { borderColor: accentColor + '55' }]}>
+                <Ionicons name="camera" size={48} color={Colors.text.tertiary} style={{ marginBottom: 12 }} />
                 <Text style={styles.cameraText}>Camera permission required</Text>
                 <TouchableOpacity
                     style={[styles.permissionButton, { backgroundColor: accentColor }]}
@@ -87,11 +97,14 @@ function CameraSection({
     // Preview mode — captured photo shown with Retake / Use This
     if (capturedUri) {
         return (
-            <View style={[styles.cameraContainer, { borderColor: accentColor + '99' }]}>
+            <View style={[styles.cameraContainer, cameraHeightStyle, { borderColor: accentColor + '99' }]}>
                 <Image source={{ uri: capturedUri }} style={styles.camera} resizeMode="cover" />
                 <View style={styles.previewOverlay}>
                     <View style={[styles.previewBadge, { backgroundColor: accentColor + 'dd' }]}>
-                        <Text style={styles.previewBadgeText}>📸 CAPTURED</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Ionicons name="camera" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />
+                            <Text style={styles.previewBadgeText}>CAPTURED</Text>
+                        </View>
                     </View>
                     <View style={styles.previewActions}>
                         <TouchableOpacity
@@ -99,10 +112,14 @@ function CameraSection({
                             onPress={() => setCapturedUri(null)}
                             activeOpacity={0.8}
                         >
-                            <Text style={styles.retakeText}>🔁 Retake</Text>
+                            <Ionicons name="refresh" size={16} color="#007AFF" style={{ marginRight: 6 }} />
+                            <Text style={styles.retakeText}>Retake</Text>
                         </TouchableOpacity>
                         <View style={[styles.useThisButton, { backgroundColor: accentColor }]}>
-                            <Text style={styles.useThisText}>✅ Photo saved with entry</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                                <Text style={styles.useThisText}>Photo saved with entry</Text>
+                            </View>
                         </View>
                     </View>
                 </View>
@@ -112,7 +129,7 @@ function CameraSection({
 
     // Live mode — viewfinder + zoom + capture button
     return (
-        <View style={[styles.cameraContainer, { borderColor: accentColor + '44' }]}>
+        <View style={[styles.cameraContainer, cameraHeightStyle, { borderColor: accentColor + '44' }]}>
             <CameraView
                 ref={cameraRef as any}
                 style={styles.camera}
@@ -169,9 +186,17 @@ function CameraSection({
                     activeOpacity={0.8}
                     disabled={capturing}
                 >
-                    <Text style={styles.captureButtonText}>
-                        {capturing ? '⏳  Capturing...' : '📸  Capture Photo'}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Ionicons 
+                            name={capturing ? "time" : "scan"} 
+                            size={20} 
+                            color="#FFFFFF" 
+                            style={{ marginRight: 8 }} 
+                        />
+                        <Text style={styles.captureButtonText}>
+                            {capturing ? 'Scanning...' : 'Scan Plate (OCR)'}
+                        </Text>
+                    </View>
                 </TouchableOpacity>
             </View>
         </View>
@@ -189,6 +214,7 @@ export default function GateEntryScreen() {
     // ===== CAMERA STATE =====
     const [permission, requestPermission] = useCameraPermissions();
     const cameraRef = useRef<CameraView>(null);
+    const insets = useSafeAreaInsets();
 
     // ===== RESIDENT ENTRY STATE =====
     const [residentVehicleNo, setResidentVehicleNo] = useState('');
@@ -215,8 +241,8 @@ export default function GateEntryScreen() {
     const [capturedUri, setCapturedUri] = useState<string | null>(null);
     const [zoom, setZoom] = useState(0); // 0 = no zoom, 1 = max zoom
 
-    // ===== OCR SCAN STATE (disabled — uncomment when Vision API is active) =====
-    // const [scanning, setScanning] = useState(false);
+    // ===== OCR SCAN STATE =====
+    // We reuse the `capturing` state from the camera for the OCR scan progress.
 
     // ===== SUCCESS STATE =====
     const [showSuccess, setShowSuccess] = useState(false);
@@ -237,8 +263,8 @@ export default function GateEntryScreen() {
     // ── In-memory plate lookup (instant — no Firestore round-trip) ────────────
     const lookupPlateInMemory = useCallback((plate: string): RegisteredVehicle | null => {
         if (!plate || plate.length < 3) return null;
-        const normalized = plate.trim().toUpperCase();
-        return registeredVehicles.find(v => v.vehicleNo === normalized) ?? null;
+        const normalized = normalizeVehicleNumber(plate);
+        return registeredVehicles.find(v => normalizeVehicleNumber(v.vehicleNo) === normalized) ?? null;
     }, [registeredVehicles]);
 
     // Auto-lookup for RESIDENT entry — purely in-memory
@@ -271,8 +297,8 @@ export default function GateEntryScreen() {
             setActiveVehicle(null);
             return;
         }
-        const normalized = debouncedExitNo.trim().toUpperCase();
-        const log = activeVehiclesList.find(v => v.vehicleNo === normalized) ?? null;
+        const normalized = normalizeVehicleNumber(debouncedExitNo);
+        const log = activeVehiclesList.find(v => normalizeVehicleNumber(v.vehicleNo) === normalized) ?? null;
         setActiveVehicle(log);
         if (!log && debouncedExitNo.length >= 4) {
             setExitError('Vehicle not found inside');
@@ -312,90 +338,76 @@ export default function GateEntryScreen() {
         }, 1500);
     };
 
-    // ===== CAMERA CAPTURE HANDLER =====
+    // ===== CAMERA SCAN LOGIC (OCR Enabled) =====
+
+    // Fill whichever tab is active with a detected/typed plate number.
+    const fillPlate = (normalized: string) => {
+        if (activeTab === 'resident') {
+            setResidentVehicleNo(normalized);
+            setResidentError('');
+            setRegisteredVehicle(null);
+        } else if (activeTab === 'visitor') {
+            setVisitorVehicleNo(normalized);
+            setVisitorRegisteredVehicle(null);
+        } else {
+            setExitVehicleNo(normalized);
+            setExitError('');
+            setActiveVehicle(null);
+        }
+    };
+
+    // Manual fallback — cross-platform (Alert.prompt is iOS-only).
+    const promptManual = () => {
+        if (Platform.OS === 'ios') {
+            Alert.prompt(
+                '✏️ Enter License Plate',
+                'Type the plate number (e.g. LEA-1234)',
+                (text) => {
+                    if (!text || !text.trim()) return;
+                    fillPlate(normalizeVehicleNumber(text.trim().toUpperCase()));
+                },
+                'plain-text',
+                '',
+                'default'
+            );
+        } else {
+            Alert.alert(
+                '📷 OCR could not read the plate',
+                'Please type the license plate number in the field below.',
+                [{ text: 'OK' }]
+            );
+        }
+    };
+
+    // Primary handler — capture photo → OCR → auto-fill or fall back to manual.
     const handleCapture = async () => {
         if (!cameraRef.current || capturing) return;
         setCapturing(true);
         try {
             const photo = await cameraRef.current.takePictureAsync({
-                quality: 0.85,
+                quality: 0.3, // Greatly reduce quality for massive speed boost in OCR
                 skipProcessing: false, // keep orientation correct
+                base64: true,
             });
-            if (photo?.uri) {
-                setCapturedUri(photo.uri);
+            if (!photo?.uri || !photo?.base64) throw new Error('No photo captured');
+            
+            // Show the captured photo in the preview
+            setCapturedUri(photo.uri);
+
+            // Run OCR detection instantly with the base64 data
+            const plate = await detectLicensePlate(photo.base64);
+            if (plate) {
+                fillPlate(normalizeVehicleNumber(plate));
+            } else {
+                promptManual();
             }
         } catch (err) {
-            console.warn('[Camera] capture failed:', err);
+            console.warn('[OCR] scan failed, falling back to manual:', err);
+            promptManual();
         } finally {
             setCapturing(false);
         }
     };
-
-    // ===== CAMERA SCAN LOGIC (OCR disabled — re-enable when Vision API is configured) =====
-
-    // Fill whichever tab is active with a detected/typed plate number.
-    // const fillPlate = (normalized: string) => {
-    //     if (activeTab === 'resident') {
-    //         setResidentVehicleNo(normalized);
-    //         setResidentError('');
-    //         setRegisteredVehicle(null);
-    //     } else if (activeTab === 'visitor') {
-    //         setVisitorVehicleNo(normalized);
-    //         setVisitorRegisteredVehicle(null);
-    //     } else {
-    //         setExitVehicleNo(normalized);
-    //         setExitError('');
-    //         setActiveVehicle(null);
-    //     }
-    // };
-
-    // Manual fallback — cross-platform (Alert.prompt is iOS-only).
-    // const promptManual = () => {
-    //     if (Platform.OS === 'ios') {
-    //         Alert.prompt(
-    //             '✏️ Enter License Plate',
-    //             'Type the plate number (e.g. LEA-1234)',
-    //             (text) => {
-    //                 if (!text || !text.trim()) return;
-    //                 fillPlate(normalizeVehicleNumber(text.trim().toUpperCase()));
-    //             },
-    //             'plain-text',
-    //             '',
-    //             'default'
-    //         );
-    //     } else {
-    //         Alert.alert(
-    //             '📷 OCR could not read the plate',
-    //             'Please type the license plate number in the field below.',
-    //             [{ text: 'OK' }]
-    //         );
-    //     }
-    // };
-
-    // Primary handler — capture photo → OCR → auto-fill or fall back to manual.
-    // const handleOcrScan = async () => {
-    //     if (!cameraRef.current || scanning) return;
-    //     setScanning(true);
-    //     try {
-    //         const photo = await cameraRef.current.takePictureAsync({
-    //             quality: 0.85,
-    //             skipProcessing: false,
-    //             base64: true,
-    //         });
-    //         if (!photo?.uri) throw new Error('No photo captured');
-    //         const plate = await detectLicensePlate(photo.uri);
-    //         if (plate) {
-    //             fillPlate(normalizeVehicleNumber(plate));
-    //         } else {
-    //             promptManual();
-    //         }
-    //     } catch (err) {
-    //         console.warn('[OCR] scan failed, falling back to manual:', err);
-    //         promptManual();
-    //     } finally {
-    //         setScanning(false);
-    //     }
-    // };
 
     // (CameraSection is now defined at module level — see above)
 
@@ -422,7 +434,7 @@ export default function GateEntryScreen() {
 
             // 2. Log entry with the photo URL already embedded
             const result = await logVehicleEntry({
-                vehicleNo: residentVehicleNo.trim().toUpperCase(),
+                vehicleNo: normalizeVehicleNumber(residentVehicleNo),
                 type: 'Resident',
                 residentId: registeredVehicle.residentId,
                 residentName: registeredVehicle.residentName,
@@ -470,7 +482,7 @@ export default function GateEntryScreen() {
 
             // 2. Log entry with the photo URL already embedded
             const result = await logVehicleEntry({
-                vehicleNo: visitorVehicleNo.trim().toUpperCase(),
+                vehicleNo: normalizeVehicleNumber(visitorVehicleNo),
                 type: 'Visitor',
                 visitorName: visitorName.trim(),
                 purpose: visitorPurpose.trim() || null,
@@ -539,7 +551,7 @@ export default function GateEntryScreen() {
     if (showSuccess) {
         return (
             <View style={styles.successOverlay}>
-                <Text style={styles.successIcon}>✅</Text>
+                <Ionicons name="checkmark-circle" size={80} color="#FFFFFF" style={{ marginBottom: 20 }} />
                 <Text style={styles.successText}>{successMessage.title}</Text>
                 <Text style={styles.successSubtext}>{successMessage.subtitle}</Text>
             </View>
@@ -547,21 +559,19 @@ export default function GateEntryScreen() {
     }
 
     return (
-        <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-            {/* Header */}
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>🚗 Gate Control</Text>
-                <Text style={styles.headerSubtitle}>Security: {userProfile?.name}</Text>
-            </View>
-
+        <KeyboardAvoidingView 
+            style={[styles.container, { paddingBottom: Math.max(insets.bottom, 16) }]} 
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 60 : 0}
+        >
             {/* Tab Bar - 3 Sections */}
-            <View style={styles.tabBar}>
+            <View style={[styles.tabBar, { marginTop: 16 }]}>
                 <TouchableOpacity
                     style={[styles.tab, activeTab === 'resident' && styles.tabActiveGreen]}
                     onPress={() => setActiveTab('resident')}
                 >
-                    <Text style={styles.tabIcon}>🏠</Text>
-                    <Text style={[styles.tabText, activeTab === 'resident' && styles.tabTextActive]}>
+                    <Ionicons name="home" size={24} color={activeTab === 'resident' ? Colors.primary[600] : '#6B7280'} style={{ marginBottom: 4 }} />
+                    <Text style={[styles.tabText, activeTab === 'resident' && styles.tabTextActive, activeTab === 'resident' && { color: Colors.primary[600] }]}>
                         Resident
                     </Text>
                 </TouchableOpacity>
@@ -569,8 +579,8 @@ export default function GateEntryScreen() {
                     style={[styles.tab, activeTab === 'visitor' && styles.tabActiveOrange]}
                     onPress={() => setActiveTab('visitor')}
                 >
-                    <Text style={styles.tabIcon}>👤</Text>
-                    <Text style={[styles.tabText, activeTab === 'visitor' && styles.tabTextActive]}>
+                    <Ionicons name="person" size={24} color={activeTab === 'visitor' ? '#F59E0B' : '#6B7280'} style={{ marginBottom: 4 }} />
+                    <Text style={[styles.tabText, activeTab === 'visitor' && styles.tabTextActive, activeTab === 'visitor' && { color: '#F59E0B' }]}>
                         Visitor
                     </Text>
                 </TouchableOpacity>
@@ -578,8 +588,8 @@ export default function GateEntryScreen() {
                     style={[styles.tab, activeTab === 'exit' && styles.tabActiveBlue]}
                     onPress={() => setActiveTab('exit')}
                 >
-                    <Text style={styles.tabIcon}>📤</Text>
-                    <Text style={[styles.tabText, activeTab === 'exit' && styles.tabTextActive]}>
+                    <Ionicons name="log-out" size={24} color={activeTab === 'exit' ? '#F43F5E' : '#6B7280'} style={{ marginBottom: 4 }} />
+                    <Text style={[styles.tabText, activeTab === 'exit' && styles.tabTextActive, activeTab === 'exit' && { color: '#F43F5E' }]}>
                         Exit ({activeVehiclesList.length})
                     </Text>
                 </TouchableOpacity>
@@ -588,9 +598,9 @@ export default function GateEntryScreen() {
             {/* ===== RESIDENT ENTRY TAB ===== */}
             {activeTab === 'resident' && (
                 <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-                    {/* Live Camera – Resident (green accent) */}
+                    {/* Live Camera – Resident (teal accent) */}
                     <CameraSection
-                        accentColor="#10b981"
+                        accentColor={Colors.primary[600]}
                         permission={permission}
                         requestPermission={requestPermission}
                         cameraRef={cameraRef}
@@ -604,7 +614,7 @@ export default function GateEntryScreen() {
 
                     <Card style={styles.entryCard}>
                         <View style={styles.cardHeader}>
-                            <Text style={styles.cardHeaderIcon}>🏠</Text>
+                            <Ionicons name="home" size={24} color={Colors.primary[600]} style={{ marginRight: 8 }} />
                             <Text style={styles.cardHeaderTitle}>Resident Vehicle Entry</Text>
                         </View>
 
@@ -632,8 +642,14 @@ export default function GateEntryScreen() {
                                     </View>
                                     <Text style={styles.verifiedName}>{registeredVehicle.residentName}</Text>
                                     <View style={styles.verifiedDetails}>
-                                        <Text style={styles.verifiedInfo}>🏠 House {registeredVehicle.houseNo}</Text>
-                                        <Text style={styles.verifiedInfo}>🚗 {registeredVehicle.type}</Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                            <Ionicons name="home" size={14} color="#666" style={{ marginRight: 4 }} />
+                                            <Text style={styles.verifiedInfo}>House {registeredVehicle.houseNo}</Text>
+                                        </View>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                            <Ionicons name="car" size={14} color="#666" style={{ marginRight: 4 }} />
+                                            <Text style={styles.verifiedInfo}>{registeredVehicle.type}</Text>
+                                        </View>
                                     </View>
                                 </View>
                             )}
@@ -641,7 +657,10 @@ export default function GateEntryScreen() {
                             {/* Error - Not Registered */}
                             {residentError && (
                                 <View style={styles.errorBox}>
-                                    <Text style={styles.errorText}>⚠️ {residentError}</Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <Ionicons name="warning" size={16} color="#DC2626" style={{ marginRight: 4 }} />
+                                        <Text style={styles.errorText}>{residentError}</Text>
+                                    </View>
                                 </View>
                             )}
                         </View>
@@ -682,7 +701,7 @@ export default function GateEntryScreen() {
 
                     <Card style={[styles.entryCard, styles.visitorCard]}>
                         <View style={styles.cardHeader}>
-                            <Text style={styles.cardHeaderIcon}>👤</Text>
+                            <Ionicons name="person" size={24} color={Colors.primary[600]} style={{ marginRight: 8 }} />
                             <Text style={styles.cardHeaderTitle}>Visitor Vehicle Entry</Text>
                         </View>
 
@@ -704,11 +723,20 @@ export default function GateEntryScreen() {
                             {/* Warning – this plate belongs to a registered resident */}
                             {visitorRegisteredVehicle && (
                                 <View style={styles.residentWarningBox}>
-                                    <Text style={styles.residentWarningTitle}>⚠️ Registered Resident Vehicle</Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                                        <Ionicons name="warning" size={16} color="#B45309" style={{ marginRight: 6 }} />
+                                        <Text style={[styles.residentWarningTitle, { marginBottom: 0 }]}>Registered Resident Vehicle</Text>
+                                    </View>
                                     <Text style={styles.residentWarningName}>{visitorRegisteredVehicle.residentName}</Text>
                                     <View style={styles.residentWarningDetails}>
-                                        <Text style={styles.residentWarningInfo}>🏠 House {visitorRegisteredVehicle.houseNo}</Text>
-                                        <Text style={styles.residentWarningInfo}>🚗 {visitorRegisteredVehicle.type}</Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                            <Ionicons name="home" size={14} color="#92400E" style={{ marginRight: 4 }} />
+                                            <Text style={styles.residentWarningInfo}>House {visitorRegisteredVehicle.houseNo}</Text>
+                                        </View>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                            <Ionicons name="car" size={14} color="#92400E" style={{ marginRight: 4 }} />
+                                            <Text style={styles.residentWarningInfo}>{visitorRegisteredVehicle.type}</Text>
+                                        </View>
                                     </View>
                                     <Text style={styles.residentWarningHint}>
                                         Use the Resident tab for registered vehicles.
@@ -804,33 +832,41 @@ export default function GateEntryScreen() {
                                 <View style={styles.foundBox}>
                                     <Text style={styles.foundLabel}>✓ FOUND INSIDE</Text>
                                     <Text style={styles.foundVehicleNo}>{activeVehicle.vehicleNo}</Text>
-                                    {activeVehicle.residentName && (
-                                        <Text style={styles.foundMeta}>
-                                            🏠 {activeVehicle.residentName} • House {activeVehicle.houseNo}
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                            <Ionicons name="home" size={14} color={Colors.text.secondary} style={{ marginRight: 6 }} />
+                                            <Text style={styles.foundMeta}>
+                                                {activeVehicle.residentName} • House {activeVehicle.houseNo}
+                                            </Text>
+                                        </View>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                            <Ionicons name="person" size={14} color={Colors.text.secondary} style={{ marginRight: 6 }} />
+                                            <Text style={styles.foundMeta}>
+                                                {activeVehicle.visitorName}
+                                                {activeVehicle.purpose && ` • ${activeVehicle.purpose}`}
+                                            </Text>
+                                        </View>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                        <Ionicons name="time" size={14} color={Colors.text.secondary} style={{ marginRight: 6 }} />
+                                        <Text style={styles.foundTime}>
+                                            Entry: {formatTime(activeVehicle.entryTime)}
                                         </Text>
-                                    )}
-                                    {activeVehicle.visitorName && (
-                                        <Text style={styles.foundMeta}>
-                                            👤 {activeVehicle.visitorName}
-                                            {activeVehicle.purpose && ` • ${activeVehicle.purpose}`}
-                                        </Text>
-                                    )}
-                                    <Text style={styles.foundTime}>
-                                        ⏰ Entry: {formatTime(activeVehicle.entryTime)}
-                                    </Text>
+                                    </View>
                                 </View>
                             )}
 
                             {/* Error */}
                             {exitError && (
                                 <View style={styles.errorBox}>
-                                    <Text style={styles.errorText}>⚠️ {exitError}</Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <Ionicons name="warning" size={16} color="#DC2626" style={{ marginRight: 4 }} />
+                                        <Text style={styles.errorText}>{exitError}</Text>
+                                    </View>
                                 </View>
                             )}
                         </View>
 
                         <Button
-                            title={exitLoading ? 'Processing...' : '📤 Confirm Exit'}
+                            title={exitLoading ? 'Processing...' : 'Confirm Exit'}
                             onPress={handleExit}
                             loading={exitLoading}
                             disabled={!activeVehicle}
@@ -842,13 +878,19 @@ export default function GateEntryScreen() {
 
                     {/* Active Vehicles Count */}
                     <View style={styles.statsBar}>
-                        <Text style={styles.statsText}>
-                            🚗 {activeVehiclesList.length} vehicles currently inside
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Ionicons name="car" size={16} color={Colors.primary[600]} style={{ marginRight: 6 }} />
+                            <Text style={styles.statsText}>
+                                {activeVehiclesList.length} vehicles currently inside
+                            </Text>
+                        </View>
                     </View>
 
                     <TouchableOpacity onPress={resetExitForm} style={styles.resetButton}>
-                        <Text style={styles.resetText}>🔄 Clear</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Ionicons name="refresh" size={16} color="#007AFF" style={{ marginRight: 6 }} />
+                            <Text style={styles.resetText}>Clear</Text>
+                        </View>
                     </TouchableOpacity>
                 </ScrollView>
             )}
@@ -857,43 +899,46 @@ export default function GateEntryScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#0f0f1a' },
-    header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
-    headerTitle: { fontSize: 26, fontWeight: '800', color: '#fff' },
-    headerSubtitle: { fontSize: 13, color: '#6b6b8a', marginTop: 2 },
-
+    container: { flex: 1, backgroundColor: '#F5F7FA' },
+    
     // Tab Bar
     tabBar: {
         flexDirection: 'row',
         marginHorizontal: 16,
         marginBottom: 12,
-        backgroundColor: '#1a1a2e',
+        backgroundColor: '#FFFFFF',
         borderRadius: 16,
-        padding: 6
+        padding: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
     },
     tab: {
         flex: 1,
-        paddingVertical: 12,
+        paddingVertical: 10,
         alignItems: 'center',
-        borderRadius: 12
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: 'transparent'
     },
-    tabActiveGreen: { backgroundColor: '#10b981' },
-    tabActiveOrange: { backgroundColor: '#f59e0b' },
-    tabActiveBlue: { backgroundColor: '#3b82f6' },
-    tabIcon: { fontSize: 20, marginBottom: 4 },
-    tabText: { fontSize: 12, fontWeight: '600', color: '#6b6b8a' },
-    tabTextActive: { color: '#fff' },
+    tabActiveGreen: { borderColor: '#0D9488', backgroundColor: '#F0FDFA' },
+    tabActiveOrange: { borderColor: '#FCD34D', backgroundColor: '#FFFBEB' },
+    tabActiveBlue: { borderColor: '#FDA4AF', backgroundColor: '#FFF1F2' },
+    tabIcon: { fontSize: 20, marginBottom: 2 },
+    tabText: { fontSize: 12, fontWeight: '700', color: '#6B7280' },
+    tabTextActive: { color: '#111827' },
 
     scroll: { flex: 1 },
     content: { padding: 16, paddingBottom: 40 },
 
     // ===== CAMERA STYLES =====
     cameraContainer: {
-        height: 280,                  // Taller viewfinder for better visibility
         marginBottom: 16,
         borderRadius: 20,
         overflow: 'hidden',
-        backgroundColor: '#0a0a14',
+        backgroundColor: '#1F2937',
         borderWidth: 1.5,
         justifyContent: 'center',
         alignItems: 'center',
@@ -953,9 +998,9 @@ const styles = StyleSheet.create({
     cornerTR: { top: -2, right: -2, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: 5 },
     cornerBL: { bottom: -2, left: -2, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: 5 },
     cornerBR: { bottom: -2, right: -2, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: 5 },
-    cameraStatusText: { color: '#6b6b8a', fontSize: 14 },
+    cameraStatusText: { color: '#9CA3AF', fontSize: 14 },
     cameraIcon: { fontSize: 32, marginBottom: 10 },
-    cameraText: { fontSize: 14, color: '#6b6b8a', fontWeight: '500', marginBottom: 14 },
+    cameraText: { fontSize: 14, color: '#9CA3AF', fontWeight: '500', marginBottom: 14 },
     permissionButton: {
         paddingHorizontal: 20,
         paddingVertical: 10,
@@ -1054,18 +1099,23 @@ const styles = StyleSheet.create({
 
     // Entry Cards
     entryCard: {
-        backgroundColor: '#1a1a2e',
+        backgroundColor: '#FFFFFF',
         borderRadius: 20,
         padding: 24,
         marginBottom: 16,
         borderWidth: 1,
-        borderColor: 'rgba(16, 185, 129, 0.2)',
+        borderColor: '#E5E7EB',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 12,
+        elevation: 3,
     },
     visitorCard: {
-        borderColor: 'rgba(245, 158, 11, 0.2)',
+        borderColor: '#FDE68A',
     },
     exitCard: {
-        borderColor: 'rgba(59, 130, 246, 0.2)',
+        borderColor: '#FECDD3',
     },
     cardHeader: {
         flexDirection: 'row',
@@ -1073,16 +1123,16 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         paddingBottom: 16,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.1)',
+        borderBottomColor: '#F3F4F6',
     },
     cardHeaderIcon: { fontSize: 28, marginRight: 12 },
-    cardHeaderTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
+    cardHeaderTitle: { fontSize: 18, fontWeight: '700', color: '#111827' },
 
     section: { marginBottom: 20 },
     sectionLabel: {
         fontSize: 11,
-        fontWeight: '600',
-        color: '#6b6b8a',
+        fontWeight: '700',
+        color: '#6B7280',
         marginBottom: 10,
         textTransform: 'uppercase',
         letterSpacing: 1
@@ -1093,18 +1143,18 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         letterSpacing: 2,
         textAlign: 'center',
-        color: '#ffffff',
+        color: '#111827',
     },
-    statusText: { marginTop: 10, fontSize: 13, color: '#6b6b8a', textAlign: 'center' },
+    statusText: { marginTop: 10, fontSize: 13, color: '#6B7280', textAlign: 'center' },
 
     // Verified Box (Resident found)
     verifiedBox: {
         marginTop: 16,
-        backgroundColor: 'rgba(16, 185, 129, 0.15)',
+        backgroundColor: '#F0FDF4',
         borderRadius: 16,
         padding: 16,
         borderWidth: 1,
-        borderColor: 'rgba(16, 185, 129, 0.4)'
+        borderColor: '#86EFAC'
     },
     verifiedHeader: {
         flexDirection: 'row',
@@ -1119,21 +1169,21 @@ const styles = StyleSheet.create({
         paddingVertical: 4,
         borderRadius: 6,
     },
-    verifiedName: { fontSize: 20, fontWeight: '700', color: '#fff', marginBottom: 8 },
+    verifiedName: { fontSize: 20, fontWeight: '700', color: '#14532D', marginBottom: 8 },
     verifiedDetails: { flexDirection: 'row', gap: 16 },
-    verifiedInfo: { fontSize: 13, color: '#10b981' },
+    verifiedInfo: { fontSize: 13, color: '#16A34A', fontWeight: '500' },
 
     // Found Box (Exit)
     foundBox: {
         marginTop: 16,
-        backgroundColor: 'rgba(59, 130, 246, 0.15)',
+        backgroundColor: '#EFF6FF',
         borderRadius: 16,
         padding: 16,
         borderWidth: 1,
-        borderColor: 'rgba(59, 130, 246, 0.4)'
+        borderColor: '#93C5FD'
     },
     foundLabel: {
-        backgroundColor: '#3b82f6',
+        backgroundColor: '#0D9488',
         color: '#fff',
         fontSize: 11,
         fontWeight: '700',
@@ -1143,34 +1193,34 @@ const styles = StyleSheet.create({
         alignSelf: 'flex-start',
         marginBottom: 8,
     },
-    foundVehicleNo: { fontSize: 22, fontWeight: '800', color: '#fff', marginBottom: 8 },
-    foundMeta: { fontSize: 13, color: '#93c5fd', marginBottom: 4 },
-    foundTime: { fontSize: 12, color: '#6b6b8a', marginTop: 4 },
+    foundVehicleNo: { fontSize: 22, fontWeight: '800', color: '#1E3A5F', marginBottom: 8 },
+    foundMeta: { fontSize: 13, color: '#3B82F6', marginBottom: 4 },
+    foundTime: { fontSize: 12, color: '#6B7280', marginTop: 4 },
 
     // Error Box
     errorBox: {
         marginTop: 16,
-        backgroundColor: 'rgba(239, 68, 68, 0.15)',
+        backgroundColor: '#FEF2F2',
         borderRadius: 12,
         padding: 14,
         borderWidth: 1,
-        borderColor: 'rgba(239, 68, 68, 0.3)'
+        borderColor: '#FECACA'
     },
-    errorText: { fontSize: 13, color: '#ef4444', textAlign: 'center' },
+    errorText: { fontSize: 13, color: '#EF4444', textAlign: 'center', fontWeight: '500' },
 
     // Resident Warning Box (shown in Visitor tab if plate is registered)
     residentWarningBox: {
         marginTop: 16,
-        backgroundColor: 'rgba(245, 158, 11, 0.12)',
+        backgroundColor: '#FFFBEB',
         borderRadius: 16,
         padding: 16,
         borderWidth: 1.5,
-        borderColor: 'rgba(245, 158, 11, 0.5)',
+        borderColor: '#FCD34D',
     },
     residentWarningTitle: {
         fontSize: 12,
-        fontWeight: '700',
-        color: '#f59e0b',
+        fontWeight: '800',
+        color: '#D97706',
         marginBottom: 6,
         textTransform: 'uppercase',
         letterSpacing: 0.8,
@@ -1178,41 +1228,43 @@ const styles = StyleSheet.create({
     residentWarningName: {
         fontSize: 18,
         fontWeight: '700',
-        color: '#fff',
+        color: '#78350F',
         marginBottom: 8,
     },
     residentWarningDetails: { flexDirection: 'row', gap: 14, marginBottom: 10 },
-    residentWarningInfo: { fontSize: 13, color: '#fbbf24' },
+    residentWarningInfo: { fontSize: 13, color: '#D97706', fontWeight: '500' },
     residentWarningHint: {
         fontSize: 12,
-        color: 'rgba(251,191,36,0.75)',
+        color: '#92400E',
         fontStyle: 'italic',
     },
 
     // Buttons
     actionButton: { marginTop: 8, paddingVertical: 16, borderRadius: 14 },
-    visitorButton: { backgroundColor: '#f59e0b' },
+    visitorButton: { backgroundColor: '#F59E0B' },
     resetButton: { alignItems: 'center', paddingVertical: 12 },
-    resetText: { fontSize: 14, color: '#6b6b8a' },
+    resetText: { fontSize: 14, color: '#9CA3AF', fontWeight: '600' },
 
     // Stats Bar
     statsBar: {
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        backgroundColor: '#F0FDFA',
         borderRadius: 10,
         padding: 12,
         alignItems: 'center',
         marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#CCFBF1'
     },
-    statsText: { fontSize: 13, color: '#93c5fd' },
+    statsText: { fontSize: 13, color: '#0D9488', fontWeight: '600' },
 
     // Success Overlay
     successOverlay: {
         flex: 1,
-        backgroundColor: '#0f0f1a',
+        backgroundColor: '#F0FDFA',
         justifyContent: 'center',
         alignItems: 'center'
     },
     successIcon: { fontSize: 100, marginBottom: 24 },
-    successText: { fontSize: 32, fontWeight: '800', color: '#10b981' },
-    successSubtext: { fontSize: 20, color: '#6b6b8a', marginTop: 8, letterSpacing: 2 },
+    successText: { fontSize: 32, fontWeight: '800', color: '#0D9488' },
+    successSubtext: { fontSize: 20, color: '#6B7280', marginTop: 8, letterSpacing: 2 },
 });

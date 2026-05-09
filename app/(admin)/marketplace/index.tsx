@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
         borderBottomColor: 'transparent',
     },
     activeTab: {
-        borderBottomColor: '#007AFF'
+        borderBottomColor: '#0D9488'
     },
     tabText: {
         fontWeight: '500',
@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     activeTabText: {
-        color: '#007AFF',
+        color: '#0D9488',
         fontWeight: '600'
     },
     content: {
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
         width: 60,
         height: 60,
         borderRadius: 30,
-        backgroundColor: '#007AFF',
+        backgroundColor: '#0D9488',
         justifyContent: 'center',
         alignItems: 'center',
         elevation: 6,

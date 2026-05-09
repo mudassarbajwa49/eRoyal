@@ -168,8 +168,8 @@ service firebase.storage {
     // ===========================
     // ANNOUNCEMENTS
     // ===========================
-    // Structure: announcements/announcementId_index_timestamp
-    match /announcements/{fileName} {
+    // Structure: announcements/...
+    match /announcements/{allPaths=**} {
       // Anyone authenticated can read
       allow read: if isAuthenticated();
       

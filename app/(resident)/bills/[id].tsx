@@ -5,7 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { doc, getDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { db } from '../../../firebaseConfig';
 import { Button } from '../../../src/components/common/Button';
 import { Card } from '../../../src/components/common/Card';
@@ -108,6 +108,13 @@ export default function BillDetailScreen() {
         return (
             <View style={styles.errorContainer}>
                 <Text style={styles.errorText}>Bill not found</Text>
+                <TouchableOpacity
+                    onPress={() => router.back()}
+                    style={styles.errorBackButton}
+                    activeOpacity={0.7}
+                >
+                    <Text style={styles.errorBackText}>← Go Back</Text>
+                </TouchableOpacity>
             </View>
         );
     }
@@ -257,7 +264,19 @@ const styles = StyleSheet.create({
     },
     errorText: {
         fontSize: 16,
-        color: '#999'
+        color: '#999',
+        marginBottom: 16,
+    },
+    errorBackButton: {
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        backgroundColor: '#0D9488',
+        borderRadius: 10,
+    },
+    errorBackText: {
+        color: '#fff',
+        fontSize: 15,
+        fontWeight: '600',
     },
     header: {
         flexDirection: 'row',
@@ -284,7 +303,7 @@ const styles = StyleSheet.create({
     amount: {
         fontSize: 32,
         fontWeight: '700',
-        color: '#007AFF'
+        color: '#0D9488'
     },
     infoRow: {
         flexDirection: 'row',
@@ -397,7 +416,7 @@ const styles = StyleSheet.create({
         marginTop: 12,
         paddingTop: 12,
         borderTopWidth: 2,
-        borderTopColor: '#007AFF',
+        borderTopColor: '#0D9488',
     },
     totalLabel: {
         fontSize: 16,
@@ -407,6 +426,6 @@ const styles = StyleSheet.create({
     totalValue: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#007AFF',
+        color: '#0D9488',
     },
 });

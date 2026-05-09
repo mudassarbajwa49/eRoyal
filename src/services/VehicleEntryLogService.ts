@@ -72,7 +72,14 @@ export const logVehicleEntry = async (
         // Add resident info if available
         if (vehicleData.residentId) {
             entryLog.residentId = vehicleData.residentId;
+        } else if (vehicleData.houseNo) {
+            // For visitors: if they provide a houseNo, find the residentId so it shows in the resident app
+            const resident = await searchResidentByHouse(vehicleData.houseNo);
+            if (resident) {
+                entryLog.residentId = resident.uid;
+            }
         }
+
         if (vehicleData.residentName) {
             entryLog.residentName = vehicleData.residentName;
         }

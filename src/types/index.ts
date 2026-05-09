@@ -16,6 +16,7 @@ export interface User {
     houseNo: string | null;
     cnic?: string;
     role: UserRole;
+    profilePictureUrl?: string | null;
     createdAt: Timestamp | FieldValue;
     createdBy: string;
 }
@@ -260,6 +261,7 @@ export interface AuthContextType {
     loading: boolean;
     login: (email: string, password: string) => Promise<ApiResponse>;
     logout: () => Promise<void>;
+    updateProfilePicture: (imageUri: string) => Promise<ApiResponse>;
 }
 
 // ==========================================

@@ -4,7 +4,7 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { doc, getDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { db } from '../../../firebaseConfig';
 import { Button } from '../../../src/components/common/Button';
 import { Card } from '../../../src/components/common/Card';
@@ -46,32 +46,36 @@ export default function ComplaintDetailScreen() {
     const handleStatusUpdate = async (status: ComplaintStatus) => {
         if (!userProfile || !complaint) return;
 
-        const confirmed = window.confirm(
+        Alert.alert(
+            'Confirm Status Update',
             `Mark this complaint as ${status}?${status === 'Resolved' && !notes.trim()
                 ? '\n\nConsider adding resolution notes below first.'
                 : ''
-            }`
+            }`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Confirm',
+                    onPress: async () => {
+                        setUpdating(true);
+                        const result = await updateComplaintStatus(
+                            complaint.id!,
+                            status,
+                            userProfile.uid,
+                            notes.trim() || undefined
+                        );
+                        setUpdating(false);
+
+                        if (result.success) {
+                            Alert.alert('Success', `Complaint marked as ${status}!`);
+                            router.back();
+                        } else {
+                            Alert.alert('Error', result.error || 'Failed to update complaint');
+                        }
+                    }
+                }
+            ]
         );
-
-        if (!confirmed) return;
-
-        setUpdating(true);
-
-        const result = await updateComplaintStatus(
-            complaint.id!,
-            status,
-            userProfile.uid,
-            notes.trim() || undefined
-        );
-
-        setUpdating(false);
-
-        if (result.success) {
-            window.alert(`Complaint marked as ${status}!`);
-            router.back();
-        } else {
-            window.alert(result.error || 'Failed to update complaint');
-        }
     };
 
     const handleResolveWithCharge = async () => {
@@ -80,7 +84,7 @@ export default function ComplaintDetailScreen() {
         const charge = chargeAmount.trim() ? parseFloat(chargeAmount) : 0;
 
         if (chargeAmount.trim() && (isNaN(charge) || charge < 0)) {
-            window.alert('Please enter a valid charge amount');
+            Alert.alert('Invalid Amount', 'Please enter a valid charge amount');
             return;
         }
 
@@ -88,28 +92,35 @@ export default function ComplaintDetailScreen() {
             ? `Resolve this complaint and add Rs. ${charge.toLocaleString()} to the resident's monthly bill?`
             : 'Resolve this complaint without adding any charge?';
 
-        const confirmed = window.confirm(confirmMsg);
-        if (!confirmed) return;
+        Alert.alert(
+            'Confirm Resolution',
+            confirmMsg,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Resolve',
+                    onPress: async () => {
+                        setUpdating(true);
+                        const result = await resolveComplaintWithCharge(
+                            complaint.id!,
+                            notes.trim(),
+                            charge > 0 ? charge : null,
+                            userProfile.uid,
+                            complaint.residentId,
+                            complaint.residentName
+                        );
+                        setUpdating(false);
 
-        setUpdating(true);
-
-        const result = await resolveComplaintWithCharge(
-            complaint.id!,
-            notes.trim(),
-            charge > 0 ? charge : null,
-            userProfile.uid,
-            complaint.residentId,
-            complaint.residentName
+                        if (result.success) {
+                            Alert.alert('Success', result.message || 'Complaint resolved!');
+                            router.back();
+                        } else {
+                            Alert.alert('Error', result.error || 'Failed to resolve complaint');
+                        }
+                    }
+                }
+            ]
         );
-
-        setUpdating(false);
-
-        if (result.success) {
-            window.alert(result.message || 'Complaint resolved!');
-            router.back();
-        } else {
-            window.alert(result.error || 'Failed to resolve complaint');
-        }
     };
 
     if (loading) {
@@ -180,10 +191,10 @@ export default function ComplaintDetailScreen() {
                     )}
 
                     {/* Show charge if added to bill */}
-                    {isResolved && complaint.chargeAmount && complaint.chargeAmount > 0 && (
+                    {isResolved && (complaint.chargeAmount ?? 0) > 0 && (
                         <View style={styles.chargeSection}>
                             <Text style={styles.label}>Service Charge:</Text>
-                            <Text style={styles.chargeAmount}>Rs. {complaint.chargeAmount.toLocaleString()}</Text>
+                            <Text style={styles.chargeAmount}>Rs. {complaint.chargeAmount!.toLocaleString()}</Text>
                             <Text style={styles.chargeNote}>✓ Added to Monthly Bill</Text>
                         </View>
                     )}

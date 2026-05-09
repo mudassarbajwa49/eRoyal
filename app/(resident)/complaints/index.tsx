@@ -8,6 +8,7 @@
  * - Create new complaint button
  */
 
+import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -135,7 +136,7 @@ export default function ComplaintsIndex() {
                     }
                     ListEmptyComponent={
                         <View style={styles.emptyState}>
-                            <Text style={styles.emptyIcon}>🛠</Text>
+                            <Ionicons name="construct" size={48} color={Colors.text.tertiary} style={{ marginBottom: 12 }} />
                             <Text style={styles.emptyText}>No complaints submitted</Text>
                             <Text style={styles.emptySubtext}>
                                 Tap the button above to submit your first complaint

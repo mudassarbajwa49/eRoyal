@@ -2,9 +2,10 @@
 // Manages user authentication state and user profile across the app
 
 import { User as FirebaseUser, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '../../firebaseConfig';
+import { uploadProfilePicture } from '../services/FirebaseStorageService';
 import { ApiResponse, AuthContextType, User, UserRole } from '../types';
 import { logger } from '../utils/logger';
 
@@ -129,6 +130,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
+    // Update Profile Picture
+    // Uploads to Storage, writes the URL to Firestore, and refreshes local state.
+    // Pass imageUri = '' to REMOVE the profile picture (sets URL to null).
+    const updateProfilePicture = async (imageUri: string): Promise<ApiResponse> => {
+        if (!currentUser) {
+            return { success: false, error: 'Not authenticated' };
+        }
+        try {
+            const uid = currentUser.uid;
+            let url: string | null = null;
+
+            if (imageUri) {
+                // 1a. Upload image to Firebase Storage and get download URL
+                const result = await uploadProfilePicture(imageUri, uid);
+                url = result.url;
+            }
+            // If imageUri is empty, url stays null — removes the photo
+
+            // 2. Update the unified 'users' collection
+            await updateDoc(doc(db, 'users', uid), { profilePictureUrl: url });
+
+            // 3. Also update the role-specific collection if the user is a resident
+            if (userProfile?.role === 'resident') {
+                try {
+                    await updateDoc(doc(db, 'residents', uid), { profilePictureUrl: url });
+                } catch {
+                    // Resident doc may not exist in legacy setups — not a fatal error
+                    logger.warn('Could not update residents collection profile picture');
+                }
+            }
+
+            // 4. Refresh local state so the avatar updates immediately
+            setUserProfile((prev) => prev ? { ...prev, profilePictureUrl: url } : prev);
+
+            logger.success(url ? 'Profile picture updated successfully' : 'Profile picture removed');
+            return { success: true, message: url ? 'Profile picture updated' : 'Profile picture removed' };
+        } catch (error: any) {
+            logger.error('Error updating profile picture:', error);
+            return { success: false, error: error.message || 'Failed to update profile picture' };
+        }
+    };
+
+
     // Flag to prevent double-fetch when login() already loaded the profile
     const profileLoadedRef = React.useRef(false);
 
@@ -166,7 +210,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userRole,
         loading,
         login,
-        logout
+        logout,
+        updateProfilePicture,
     };
 
     return (

@@ -29,6 +29,7 @@ import {
 import { Card } from '../../../src/components/common/Card';
 import { useAdminData } from '../../../src/contexts/AdminDataContext';
 import { RegisteredVehicle, VehicleLog } from '../../../src/types';
+import { Colors } from '../../../constants/designSystem';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -79,7 +80,7 @@ function getTypeColor(type: string): string {
     switch (type) {
         case 'Resident': return '#34C759';
         case 'Visitor': return '#FF9500';
-        case 'Service': return '#007AFF';
+        case 'Service': return Colors.primary[600];
         default: return '#8E8E93';
     }
 }
@@ -208,12 +209,12 @@ const calStyles = StyleSheet.create({
     container: { backgroundColor: '#fff', borderRadius: 16, padding: 16, width: 300 },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
     navBtn: { padding: 8 },
-    navText: { fontSize: 22, color: '#007AFF', fontWeight: '600' },
+    navText: { fontSize: 22, color: Colors.primary[600], fontWeight: '600' },
     monthLabel: { fontSize: 16, fontWeight: '700', color: '#111' },
     row: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 4 },
     dayName: { width: 36, textAlign: 'center', fontSize: 11, color: '#999', fontWeight: '600' },
     cell: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center', borderRadius: 18 },
-    cellSel: { backgroundColor: '#007AFF' },
+    cellSel: { backgroundColor: Colors.primary[600] },
     cellToday: { backgroundColor: '#E8F0FF' },
     cellText: { fontSize: 14, color: '#111' },
     cellTextSel: { color: '#fff', fontWeight: '700' },
@@ -294,7 +295,7 @@ const dfStyles = StyleSheet.create({
     bar: { flexDirection: 'row', paddingHorizontal: 12, paddingBottom: 10, gap: 6, flexWrap: 'wrap' },
     pill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: '#F0F0F5' },
     pillCal: { flex: 1, maxWidth: 130 },
-    pillActive: { backgroundColor: '#007AFF' },
+    pillActive: { backgroundColor: Colors.primary[600] },
     pillText: { fontSize: 12, fontWeight: '600', color: '#555' },
     pillTextActive: { color: '#fff' },
     overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
@@ -556,7 +557,7 @@ export default function VehiclesIndex() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statsScroll}>
                 <View style={styles.statsRow}>
                     {[
-                        { label: "Today's Entries", value: todayStats.entries, color: '#007AFF' },
+                        { label: "Today's Entries", value: todayStats.entries, color: Colors.primary[600] },
                         { label: 'Residents Today', value: todayStats.residents, color: '#34C759' },
                         { label: 'Visitors Today', value: todayStats.visitors, color: '#FF9500' },
                         { label: 'Exits Today', value: todayStats.exits, color: '#8E8E93' },
@@ -728,7 +729,7 @@ export default function VehiclesIndex() {
                             <View style={styles.cardHeader}>
                                 <Text style={styles.vehicleNo}>{v.vehicleNo}</Text>
                                 <View style={[styles.typeBadge,
-                                { backgroundColor: v.type === 'Car' ? '#007AFF' : '#34C759' }]}>
+                                { backgroundColor: v.type === 'Car' ? Colors.primary[600] : '#34C759' }]}>
                                     <Text style={styles.typeText}>
                                         {v.type === 'Car' ? '🚗' : '🏍️'} {v.type}
                                     </Text>
@@ -769,7 +770,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 14, paddingVertical: 8,
         borderRadius: 20, backgroundColor: '#E5E5EA',
     },
-    tabActive: { backgroundColor: '#007AFF' },
+    tabActive: { backgroundColor: Colors.primary[600] },
     tabText: { fontSize: 12, fontWeight: '600', color: '#555' },
     tabTextActive: { color: '#fff' },
 
@@ -782,7 +783,7 @@ const styles = StyleSheet.create({
     vehicleNo: { fontSize: 17, fontWeight: '800', color: '#111827', letterSpacing: 0.3 },
     typeBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
     typeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
-    residentLine: { fontSize: 13, color: '#007AFF', fontWeight: '500', marginBottom: 6 },
+    residentLine: { fontSize: 13, color: Colors.primary[600], fontWeight: '500', marginBottom: 6 },
     visitorLine: { fontSize: 13, color: '#6B7280', marginBottom: 6 },
     timeBlock: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#E5E7EB', paddingTop: 8 },
     timeRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 },
@@ -797,12 +798,12 @@ const styles = StyleSheet.create({
     houseHdr: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
         paddingBottom: 8, marginBottom: 6,
-        borderBottomWidth: 2, borderBottomColor: '#007AFF',
+        borderBottomWidth: 2, borderBottomColor: Colors.primary[600],
     },
     houseTitle: { fontSize: 17, fontWeight: '700', color: '#111827' },
     houseCount: { fontSize: 12, color: '#6B7280' },
     subLabel: { fontSize: 13, fontWeight: '700', color: '#374151', marginVertical: 6, marginLeft: 2 },
-    more: { textAlign: 'center', color: '#007AFF', fontSize: 13, paddingVertical: 6 },
+    more: { textAlign: 'center', color: Colors.primary[600], fontSize: 13, paddingVertical: 6 },
 
     // Empty
     empty: { textAlign: 'center', color: '#9CA3AF', paddingVertical: 40, fontSize: 14 },

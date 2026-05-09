@@ -1,6 +1,7 @@
 // Resident Add Vehicle Screen
 // Register a new vehicle (Car/Bike)
 
+import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -11,9 +12,9 @@ import { useAuth } from '../../../src/contexts/AuthContext';
 import { registerVehicle } from '../../../src/services/vehicleRegistrationService';
 import { RegisteredVehicleType } from '../../../src/types';
 
-const vehicleTypes: { value: RegisteredVehicleType; label: string; icon: string }[] = [
-    { value: 'Car', label: 'Car', icon: '🚗' },
-    { value: 'Bike', label: 'Bike', icon: '🏍️' },
+const vehicleTypes: { value: RegisteredVehicleType; label: string; icon: React.ReactNode }[] = [
+    { value: 'Car', label: 'Car', icon: <Ionicons name="car" size={32} color={Colors.text.primary} /> },
+    { value: 'Bike', label: 'Bike', icon: <Ionicons name="bicycle" size={32} color={Colors.text.primary} /> },
 ];
 
 export default function AddVehicleScreen() {
@@ -92,7 +93,7 @@ export default function AddVehicleScreen() {
                                     ]}
                                     onPress={() => setVehicleType(type.value)}
                                 >
-                                    <Text style={styles.typeIcon}>{type.icon}</Text>
+                                    <View style={{ marginBottom: Spacing.sm }}>{type.icon}</View>
                                     <Text style={[
                                         styles.typeLabel,
                                         vehicleType === type.value && styles.typeLabelSelected

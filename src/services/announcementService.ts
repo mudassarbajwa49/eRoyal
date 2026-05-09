@@ -5,7 +5,7 @@
 import { addDoc, collection, getDocs, orderBy, query, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebaseConfig';
 import { ApiResponse } from '../types';
-import { uploadMultipleImages, uriToBlob } from './FirebaseStorageService';
+import { uploadMultipleImages } from './imageService';
 
 export interface Announcement {
     id: string;
@@ -34,11 +34,10 @@ export const createAnnouncement = async (
 
         // Upload images to Firebase Storage if provided
         if (imageUris && imageUris.length > 0) {
-            const imageBlobs = await Promise.all(
-                imageUris.map((uri) => uriToBlob(uri))
-            );
-            const uploadedImages = await uploadMultipleImages(imageBlobs, 'announcements');
-            imageUrls = uploadedImages.map((img) => img.url);
+            const result = await uploadMultipleImages(imageUris, 'announcements');
+            if (result.success && result.urls) {
+                imageUrls = result.urls;
+            }
         }
 
         // Create announcement in Firestore

@@ -1,10 +1,11 @@
 // Resident Complaint Detail Screen
 // View complaint details and admin resolution notes
 
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { doc, getDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { db } from '../../../firebaseConfig';
 import { Card } from '../../../src/components/common/Card';
 import { LoadingSpinner } from '../../../src/components/common/LoadingSpinner';
@@ -12,6 +13,7 @@ import { Complaint } from '../../../src/types';
 
 export default function ResidentComplaintDetailScreen() {
     const { id } = useLocalSearchParams();
+    const router = useRouter();
     const [complaint, setComplaint] = useState<Complaint | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -41,8 +43,15 @@ export default function ResidentComplaintDetailScreen() {
 
     if (!complaint) {
         return (
-            <View style={styles.container}>
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
                 <Text style={styles.errorText}>Complaint not found</Text>
+                <TouchableOpacity
+                    onPress={() => router.back()}
+                    style={styles.errorBackButton}
+                    activeOpacity={0.7}
+                >
+                    <Text style={styles.errorBackText}>← Go Back</Text>
+                </TouchableOpacity>
             </View>
         );
     }
@@ -118,9 +127,17 @@ export default function ResidentComplaintDetailScreen() {
                 {/* Admin Resolution Notes (if complaint is resolved or in progress) */}
                 {(complaint.status === 'In Progress' || complaint.status === 'Resolved') && complaint.resolutionNotes && (
                     <Card style={styles.card}>
-                        <Text style={styles.sectionTitle}>
-                            {complaint.status === 'Resolved' ? '✅ Resolution Notes' : '📝 Admin Notes'}
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                            <Ionicons 
+                                name={complaint.status === 'Resolved' ? 'checkmark-circle' : 'document-text'} 
+                                size={20} 
+                                color={complaint.status === 'Resolved' ? '#2E7D32' : '#666'} 
+                                style={{ marginRight: 8 }} 
+                            />
+                            <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
+                                {complaint.status === 'Resolved' ? 'Resolution Notes' : 'Admin Notes'}
+                            </Text>
+                        </View>
                         <View style={styles.notesContainer}>
                             <Text style={styles.notesText}>{complaint.resolutionNotes}</Text>
                         </View>
@@ -136,19 +153,28 @@ export default function ResidentComplaintDetailScreen() {
                 <Card style={styles.card}>
                     <Text style={styles.sectionTitle}>Status Information</Text>
                     {complaint.status === 'Pending' && (
-                        <Text style={styles.infoText}>
-                            ⏳ Your complaint has been submitted and is waiting for admin review.
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                            <Ionicons name="time" size={20} color="#666" style={{ marginRight: 8, marginTop: 2 }} />
+                            <Text style={[styles.infoText, { flex: 1 }]}>
+                                Your complaint has been submitted and is waiting for admin review.
+                            </Text>
+                        </View>
                     )}
                     {complaint.status === 'In Progress' && (
-                        <Text style={styles.infoText}>
-                            🔄 Your complaint is being worked on by the admin team.
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                            <Ionicons name="sync" size={20} color="#666" style={{ marginRight: 8, marginTop: 2 }} />
+                            <Text style={[styles.infoText, { flex: 1 }]}>
+                                Your complaint is being worked on by the admin team.
+                            </Text>
+                        </View>
                     )}
                     {complaint.status === 'Resolved' && (
-                        <Text style={styles.infoText}>
-                            ✅ Your complaint has been resolved. Thank you for your patience!
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                            <Ionicons name="checkmark-circle" size={20} color="#666" style={{ marginRight: 8, marginTop: 2 }} />
+                            <Text style={[styles.infoText, { flex: 1 }]}>
+                                Your complaint has been resolved. Thank you for your patience!
+                            </Text>
+                        </View>
                     )}
                 </Card>
             </ScrollView>
@@ -167,7 +193,7 @@ const styles = StyleSheet.create({
     complaintNumber: {
         fontSize: 14,
         fontWeight: '700',
-        color: '#007AFF',
+        color: '#0D9488',
         marginBottom: 8,
         letterSpacing: 0.5,
     },
@@ -265,5 +291,17 @@ const styles = StyleSheet.create({
         color: '#999',
         textAlign: 'center',
         marginTop: 40,
+        marginBottom: 16,
+    },
+    errorBackButton: {
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        backgroundColor: '#0D9488',
+        borderRadius: 10,
+    },
+    errorBackText: {
+        color: '#fff',
+        fontSize: 15,
+        fontWeight: '600',
     },
 });

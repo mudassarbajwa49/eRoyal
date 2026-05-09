@@ -5,10 +5,12 @@
  * Reads live stats from AdminDataContext — no cold Firestore fetches.
  */
 
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Card } from '../../src/components/common/Card';
+import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../../constants/designSystem';
 import { useAdminData } from '../../src/contexts/AdminDataContext';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useBreakpoint } from '../../src/hooks/useResponsive';
@@ -31,51 +33,50 @@ export default function AdminDashboard() {
     const menuItems = [
         {
             title: 'User Management',
-            icon: '👥',
+            icon: <Ionicons name="people" size={28} color={Colors.info.main} />,
             description: 'Create and manage user accounts',
             route: '/(admin)/users',
-            color: '#007AFF'
+            color: Colors.info.main
         },
         {
             title: 'Bills Management',
-            icon: '💰',
+            icon: <Ionicons name="cash" size={28} color={Colors.success.main} />,
             description: 'Generate bills and verify payments',
             route: '/(admin)/bills',
-            color: '#34C759',
+            color: Colors.success.main,
             badge: stats.pendingBills > 0 ? stats.pendingBills : undefined
         },
         {
             title: 'Complaints',
-            icon: '📋',
+            icon: <Ionicons name="construct" size={28} color={Colors.warning.main} />,
             description: 'View and resolve complaints',
             route: '/(admin)/complaints',
-            color: '#FF9500',
+            color: Colors.warning.main,
             badge: stats.pendingComplaints > 0 ? stats.pendingComplaints : undefined
         },
         {
             title: 'Marketplace',
-            icon: '🏘️',
+            icon: <Ionicons name="storefront" size={28} color={Colors.info.dark} />,
             description: 'Approve property listings',
             route: '/(admin)/marketplace',
-            color: '#AF52DE',
+            color: Colors.info.dark,
             badge: stats.pendingListings > 0 ? stats.pendingListings : undefined
         },
         {
             title: 'Vehicle Logs',
-            icon: '🚗',
+            icon: <Ionicons name="car" size={28} color={Colors.secondary[600]} />,
             description: 'View vehicle entry/exit logs',
             route: '/(admin)/vehicles',
-            color: '#FF3B30'
+            color: Colors.secondary[600]
         },
         {
             title: 'Announcements',
-            icon: '📢',
+            icon: <Ionicons name="megaphone" size={28} color={Colors.primary[500]} />,
             description: 'Send notices to all residents',
             route: '/(admin)/announcements/create',
-            color: '#5856D6'
+            color: Colors.primary[500]
         }
     ];
-
 
     return (
         <ScrollView style={styles.container}>
@@ -94,7 +95,7 @@ export default function AdminDashboard() {
                 {/* Quick Statistics */}
                 <View style={[styles.statsContainer, { gap: spacing.md, marginBottom: spacing.xl }]}>
                     <View style={[styles.statBox, { borderRadius: borderRadius.lg, padding: spacing.lg }]}>
-                        <Text style={[styles.statNumber, { fontSize: breakpoint.mobile ? fontSize['2xl'] : fontSize['3xl'] }]}>
+                        <Text style={[styles.statNumber, { fontSize: breakpoint.mobile ? fontSize['2xl'] : fontSize['3xl'], color: stats.pendingBills > 0 ? Colors.error.main : Colors.success.main }]}>
                             {stats.pendingBills}
                         </Text>
                         <Text style={[styles.statLabel, { fontSize: fontSize.xs }]}>
@@ -103,7 +104,7 @@ export default function AdminDashboard() {
                     </View>
 
                     <View style={[styles.statBox, { borderRadius: borderRadius.lg, padding: spacing.lg }]}>
-                        <Text style={[styles.statNumber, { fontSize: breakpoint.mobile ? fontSize['2xl'] : fontSize['3xl'] }]}>
+                        <Text style={[styles.statNumber, { fontSize: breakpoint.mobile ? fontSize['2xl'] : fontSize['3xl'], color: Colors.warning.main }]}>
                             {stats.pendingComplaints}
                         </Text>
                         <Text style={[styles.statLabel, { fontSize: fontSize.xs }]}>
@@ -112,7 +113,7 @@ export default function AdminDashboard() {
                     </View>
 
                     <View style={[styles.statBox, { borderRadius: borderRadius.lg, padding: spacing.lg }]}>
-                        <Text style={[styles.statNumber, { fontSize: breakpoint.mobile ? fontSize['2xl'] : fontSize['3xl'] }]}>
+                        <Text style={[styles.statNumber, { fontSize: breakpoint.mobile ? fontSize['2xl'] : fontSize['3xl'], color: Colors.secondary[600] }]}>
                             {stats.pendingListings}
                         </Text>
                         <Text style={[styles.statLabel, { fontSize: fontSize.xs }]}>
@@ -131,7 +132,9 @@ export default function AdminDashboard() {
                             activeOpacity={0.7}
                         >
                             <Card style={[styles.menuCard, { padding: spacing.lg }]}>
-                                <Text style={styles.menuIcon}>{item.icon}</Text>
+                                <View style={[styles.iconContainer, { backgroundColor: `${item.color}15`, marginBottom: spacing.md }]}>
+                                    {item.icon}
+                                </View>
                                 <Text style={[styles.menuTitle, { fontSize: fontSize.lg }]}>
                                     {item.title}
                                 </Text>
@@ -162,7 +165,7 @@ export default function AdminDashboard() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F5F7FA'
+        backgroundColor: Colors.background.secondary
     },
     content: {
         // Padding handled by responsive spacing
@@ -171,12 +174,12 @@ const styles = StyleSheet.create({
         // Margin handled inline with responsive spacing
     },
     welcome: {
-        fontWeight: '700',
-        color: '#333',
+        fontWeight: Typography.fontWeight.bold,
+        color: Colors.text.primary,
         marginBottom: 4
     },
     role: {
-        color: '#666'
+        color: Colors.text.secondary
     },
     statsContainer: {
         flexDirection: 'row',
@@ -184,21 +187,19 @@ const styles = StyleSheet.create({
     },
     statBox: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: Colors.background.surface,
         alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3
+        ...Shadows.sm,
+        borderWidth: 1,
+        borderColor: Colors.border.light,
     },
     statNumber: {
-        fontWeight: '700',
-        color: '#007AFF',
+        fontWeight: Typography.fontWeight.bold,
         marginBottom: 4
+        // Color is handled inline based on stat type
     },
     statLabel: {
-        color: '#666',
+        color: Colors.text.secondary,
         textAlign: 'center'
     },
     menuGrid: {
@@ -208,20 +209,27 @@ const styles = StyleSheet.create({
         marginBottom: 4
     },
     menuCard: {
-        position: 'relative'
+        position: 'relative',
+        alignItems: 'flex-start',
         // Padding handled inline
     },
+    iconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: BorderRadius.lg,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     menuIcon: {
-        fontSize: 36,
-        marginBottom: 12
+        fontSize: 24,
     },
     menuTitle: {
-        fontWeight: '600',
-        color: '#333',
+        fontWeight: Typography.fontWeight.semibold,
+        color: Colors.text.primary,
         marginBottom: 4
     },
     menuDescription: {
-        color: '#666'
+        color: Colors.text.secondary
     },
     badge: {
         position: 'absolute',
@@ -233,7 +241,7 @@ const styles = StyleSheet.create({
         alignItems: 'center'
     },
     badgeText: {
-        color: '#fff',
-        fontWeight: '700'
+        color: Colors.text.inverse,
+        fontWeight: Typography.fontWeight.bold
     }
 });

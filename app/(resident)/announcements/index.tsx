@@ -1,6 +1,7 @@
 // Announcements List Screen (Resident)
 // Modern announcement cards with priority indicators
 
+import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { BorderRadius, Colors, Spacing, Typography } from '../../../constants/designSystem';
@@ -65,7 +66,7 @@ export default function AnnouncementListScreen() {
             </View>
 
             <View style={styles.iconRow}>
-                <Text style={styles.announcementIcon}>📢</Text>
+                <Ionicons name="megaphone" size={24} color={Colors.primary[600]} style={{ marginRight: 12 }} />
                 <View style={styles.titleContainer}>
                     <Text style={styles.title}>{item.title}</Text>
                 </View>
@@ -99,7 +100,7 @@ export default function AnnouncementListScreen() {
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
-                        <Text style={styles.emptyIcon}>📢</Text>
+                        <Ionicons name="megaphone" size={48} color={Colors.text.tertiary} style={{ marginBottom: 12 }} />
                         <Text style={styles.emptyText}>No announcements yet</Text>
                         <Text style={styles.emptySubtext}>
                             Check back later for society updates

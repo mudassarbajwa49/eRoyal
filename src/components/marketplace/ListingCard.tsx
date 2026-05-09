@@ -20,6 +20,8 @@ import {
     ActivityIndicator,
     Image,
     Linking,
+    Modal,
+    Pressable,
     ScrollView,
     StyleSheet,
     Text,
@@ -71,6 +73,7 @@ export const ListingCard: React.FC<ListingCardProps> = ({
     const [pending, setPending] = useState<ConfirmAction>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const [photoVisible, setPhotoVisible] = useState<string | null>(null);
 
     const id = listing.id!;
 
@@ -144,11 +147,29 @@ export const ListingCard: React.FC<ListingCardProps> = ({
 
             {/* Property Images */}
             {listing.photos && listing.photos.length > 0 && (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageScroll}>
-                    {listing.photos.map((photo, idx) => (
-                        <Image key={idx} source={{ uri: photo }} style={styles.image} resizeMode="cover" />
-                    ))}
-                </ScrollView>
+                <>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageScroll}>
+                        {listing.photos.map((photo, idx) => (
+                            <TouchableOpacity key={idx} activeOpacity={0.9} onPress={() => setPhotoVisible(photo)}>
+                                <Image source={{ uri: photo }} style={styles.image} resizeMode="cover" />
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+
+                    <Modal
+                        visible={photoVisible !== null}
+                        transparent
+                        animationType="fade"
+                        onRequestClose={() => setPhotoVisible(null)}
+                    >
+                        <Pressable style={styles.photoModal} onPress={() => setPhotoVisible(null)}>
+                            {photoVisible && (
+                                <Image source={{ uri: photoVisible }} style={styles.photoFull} resizeMode="contain" />
+                            )}
+                            <Text style={styles.photoModalHint}>Tap anywhere to close</Text>
+                        </Pressable>
+                    </Modal>
+                </>
             )}
 
             {/* Header — type + status badge */}
@@ -359,4 +380,22 @@ const styles = StyleSheet.create({
     rejectionBox: { backgroundColor: '#FFF1F2', padding: 12, borderRadius: 10, marginTop: 10 },
     rejectionLabel: { fontSize: 12, fontWeight: '700', color: '#BE123C', marginBottom: 4 },
     rejectionText: { fontSize: 13, color: '#374151' },
+    
+    // Photo Modal
+    photoModal: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.92)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    photoFull: {
+        width: '95%',
+        height: '75%',
+        borderRadius: 12,
+    },
+    photoModalHint: {
+        color: 'rgba(255,255,255,0.5)',
+        fontSize: 12,
+        marginTop: 16,
+    },
 });

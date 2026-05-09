@@ -59,8 +59,12 @@ service cloud.firestore {
       // Anyone authenticated can read user profiles
       allow read: if isAuthenticated();
       
-      // Only admins can create/update users
-      allow create, update: if isAdmin();
+      // Admins can create/update any user
+      // Users can update ONLY their own profilePictureUrl (nothing else)
+      allow create: if isAdmin();
+      allow update: if isAdmin() ||
+        (isOwner(userId) &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['profilePictureUrl']));
       
       // Never allow delete
       allow delete: if false;
@@ -71,7 +75,11 @@ service cloud.firestore {
     // ===========================
     match /residents/{userId} {
       allow read: if isAuthenticated();
-      allow create, update: if isAdmin();
+      // Admins can create/update; residents can update ONLY their own profilePictureUrl
+      allow create: if isAdmin();
+      allow update: if isAdmin() ||
+        (isOwner(userId) &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['profilePictureUrl']));
       allow delete: if false;
     }
     

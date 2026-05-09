@@ -3,6 +3,7 @@
 
 import { Stack, useRouter } from 'expo-router';
 import { StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { Colors, Typography } from '../../constants/designSystem';
 import { AdminDataProvider } from '../../src/contexts/AdminDataContext';
 import { useAuth } from '../../src/contexts/AuthContext';
 
@@ -21,12 +22,15 @@ export default function AdminLayout() {
                 screenOptions={{
                     headerShown: true,
                     headerStyle: {
-                        backgroundColor: '#007AFF'
+                        backgroundColor: Colors.primary[600]
                     },
-                    headerTintColor: '#fff',
+                    headerTintColor: Colors.text.inverse,
                     headerTitleStyle: {
-                        fontWeight: '600'
+                        fontWeight: Typography.fontWeight.semibold,
+                        fontSize: Typography.fontSize.lg,
                     },
+                    gestureEnabled: true,
+                    fullScreenGestureEnabled: true,
                     headerRight: () => (
                         <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
                             <Text style={styles.logoutText}>Logout</Text>
@@ -36,7 +40,7 @@ export default function AdminLayout() {
             >
                 <Stack.Screen
                     name="dashboard"
-                    options={{ title: 'Admin Dashboard' }}
+                    options={{ title: 'Admin Dashboard', gestureEnabled: false }}
                 />
                 <Stack.Screen
                     name="users/index"
@@ -97,11 +101,15 @@ export default function AdminLayout() {
 
 const styles = StyleSheet.create({
     logoutButton: {
-        marginRight: 16
+        marginRight: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 6,
+        borderRadius: 8,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
     },
     logoutText: {
         color: '#fff',
-        fontSize: 16,
-        fontWeight: '500'
+        fontSize: 14,
+        fontWeight: '600'
     }
 });

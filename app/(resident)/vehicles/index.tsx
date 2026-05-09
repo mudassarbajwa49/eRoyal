@@ -1,9 +1,10 @@
 // Resident Vehicles Index
 // Tab view: My Registered Vehicles + Entry Logs
 
+import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { Alert, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, Image, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors, Spacing, Typography } from '../../../constants/designSystem';
 import { Button } from '../../../src/components/common/Button';
 import { Card } from '../../../src/components/common/Card';
@@ -70,9 +71,9 @@ export default function VehiclesIndex() {
 
     const getVehicleIcon = (type: string) => {
         switch (type) {
-            case 'Car': return '🚗';
-            case 'Bike': return '🏍️';
-            default: return '🚙';
+            case 'Car': return <Ionicons name="car" size={24} color={Colors.text.primary} />;
+            case 'Bike': return <Ionicons name="bicycle" size={24} color={Colors.text.primary} />;
+            default: return <Ionicons name="car" size={24} color={Colors.text.primary} />;
         }
     };
 
@@ -80,7 +81,7 @@ export default function VehiclesIndex() {
         <Card style={styles.card}>
             <View style={styles.vehicleHeader}>
                 <View style={styles.vehicleInfo}>
-                    <Text style={styles.vehicleIcon}>{getVehicleIcon(item.type)}</Text>
+                    <View style={{ marginRight: Spacing.sm }}>{getVehicleIcon(item.type)}</View>
                     <View>
                         <Text style={styles.vehicleNo}>{item.vehicleNo}</Text>
                         <Text style={styles.vehicleType}>{item.type}{item.color ? ` • ${item.color}` : ''}</Text>
@@ -93,7 +94,10 @@ export default function VehiclesIndex() {
                     style={styles.deleteButton}
                     onPress={() => handleDeleteVehicle(item)}
                 >
-                    <Text style={styles.deleteButtonText}>🗑️ Delete</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Ionicons name="trash-outline" size={16} color={Colors.error.main} style={{ marginRight: 4 }} />
+                        <Text style={styles.deleteButtonText}>Delete</Text>
+                    </View>
                 </TouchableOpacity>
             </View>
         </Card>
@@ -103,7 +107,7 @@ export default function VehiclesIndex() {
         <Card style={styles.card}>
             <View style={styles.logHeader}>
                 <View style={styles.vehicleInfo}>
-                    <Text style={styles.vehicleIcon}>🚗</Text>
+                    <Ionicons name="car" size={24} color={Colors.text.primary} style={{ marginRight: Spacing.sm }} />
                     <Text style={styles.vehicleNo}>{item.vehicleNo}</Text>
                 </View>
                 <StatusBadge
@@ -118,6 +122,9 @@ export default function VehiclesIndex() {
                         <Text style={styles.timelineLabel}>Entry Time</Text>
                         <Text style={styles.timelineValue}>{formatTime(item.entryTime)}</Text>
                     </View>
+                    {item.photoUrl && (
+                        <Image source={{ uri: item.photoUrl }} style={styles.logPhoto} />
+                    )}
                 </View>
 
                 {item.exitTime && (
@@ -127,6 +134,9 @@ export default function VehiclesIndex() {
                             <Text style={styles.timelineLabel}>Exit Time</Text>
                             <Text style={styles.timelineValue}>{formatTime(item.exitTime)}</Text>
                         </View>
+                        {item.exitPhotoUrl && (
+                            <Image source={{ uri: item.exitPhotoUrl }} style={styles.logPhoto} />
+                        )}
                     </View>
                 )}
             </View>
@@ -196,7 +206,7 @@ export default function VehiclesIndex() {
                         }
                         ListEmptyComponent={
                             <View style={styles.emptyState}>
-                                <Text style={styles.emptyIcon}>🚗</Text>
+                                <Ionicons name="car" size={48} color={Colors.text.tertiary} style={{ marginBottom: 12 }} />
                                 <Text style={styles.emptyText}>No vehicles registered</Text>
                                 <Text style={styles.emptySubtext}>
                                     Add your vehicles to track them easily
@@ -217,7 +227,7 @@ export default function VehiclesIndex() {
                         }
                         ListEmptyComponent={
                             <View style={styles.emptyState}>
-                                <Text style={styles.emptyIcon}>📋</Text>
+                                <Ionicons name="list" size={48} color={Colors.text.tertiary} style={{ marginBottom: 12 }} />
                                 <Text style={styles.emptyText}>No entry logs yet</Text>
                                 <Text style={styles.emptySubtext}>
                                     Vehicle entry/exit records will appear here
@@ -365,6 +375,15 @@ const styles = StyleSheet.create({
         fontSize: Typography.fontSize.base,
         color: Colors.text.primary,
         fontWeight: Typography.fontWeight.medium,
+    },
+    logPhoto: {
+        width: 50,
+        height: 50,
+        borderRadius: 8,
+        marginLeft: Spacing.md,
+        backgroundColor: Colors.background.primary,
+        borderWidth: 1,
+        borderColor: Colors.border.light,
     },
     footer: {
         borderTopWidth: 1,

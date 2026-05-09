@@ -190,14 +190,14 @@ const styles = StyleSheet.create({
         borderBottomColor: 'transparent'
     },
     activeTab: {
-        borderBottomColor: '#007AFF'
+        borderBottomColor: '#0D9488'
     },
     filterText: {
         color: '#666',
         fontWeight: '500'
     },
     activeFilterText: {
-        color: '#007AFF',
+        color: '#0D9488',
         fontWeight: '600'
     },
     list: {

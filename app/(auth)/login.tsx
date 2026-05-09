@@ -1,10 +1,13 @@
 // Login Screen
 // Universal login for all user roles (admin, resident, security)
 
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, KeyboardAvoidingView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Colors, Typography, Spacing, BorderRadius } from '../../constants/designSystem';
 import { Button } from '../../src/components/common/Button';
+import { Card } from '../../src/components/common/Card';
 import { Input } from '../../src/components/common/Input';
 import { useAuth } from '../../src/contexts/AuthContext';
 
@@ -107,13 +110,15 @@ export default function LoginScreen() {
                 <View style={styles.content}>
                     {/* Logo/Header */}
                     <View style={styles.header}>
-                        <Text style={styles.logo}>🏘️</Text>
+                        <View style={styles.logoContainer}>
+                            <Ionicons name="business" size={48} color={Colors.primary[600]} />
+                        </View>
                         <Text style={styles.title}>eRoyal</Text>
-                        <Text style={styles.subtitle}>Housing Society Management</Text>
+                        <Text style={styles.subtitle}>Premium Housing Society Management</Text>
                     </View>
 
-                    {/* Login Form */}
-                    <View style={styles.form}>
+                    {/* Login Form in a Card */}
+                    <Card style={styles.formCard}>
                         <Input
                             label="Email"
                             placeholder="Enter your email"
@@ -150,7 +155,7 @@ export default function LoginScreen() {
                                 <Text style={styles.errorBannerText}>⚠️ {loginError}</Text>
                             </View>
                         ) : null}
-                    </View>
+                    </Card>
 
                     {/* Footer */}
                     <View style={styles.footer}>
@@ -168,7 +173,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F5F7FA'
+        backgroundColor: Colors.background.secondary,
     },
     scrollContent: {
         flexGrow: 1
@@ -176,61 +181,75 @@ const styles = StyleSheet.create({
     content: {
         flex: 1,
         justifyContent: 'center',
-        paddingHorizontal: 24,
-        paddingVertical: 40
+        paddingHorizontal: Spacing.xl,
+        paddingVertical: Spacing['4xl']
     },
     header: {
         alignItems: 'center',
-        marginBottom: 48
+        marginBottom: Spacing['3xl']
+    },
+    logoContainer: {
+        width: 100,
+        height: 100,
+        backgroundColor: Colors.background.surface,
+        borderRadius: BorderRadius.full,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: Spacing.lg,
+        shadowColor: Colors.primary[900],
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.1,
+        shadowRadius: 16,
+        elevation: 8,
     },
     logo: {
-        fontSize: 72,
-        marginBottom: 16
+        fontSize: 48,
     },
     title: {
-        fontSize: 32,
-        fontWeight: '700',
-        color: '#333',
-        marginBottom: 8
+        fontSize: Typography.fontSize['3xl'],
+        fontWeight: Typography.fontWeight.bold,
+        color: Colors.text.primary,
+        marginBottom: Spacing.xs
     },
     subtitle: {
-        fontSize: 16,
-        color: '#666',
+        fontSize: Typography.fontSize.base,
+        color: Colors.text.secondary,
         textAlign: 'center'
     },
-    form: {
+    formCard: {
         width: '100%',
-        maxWidth: 400,
-        alignSelf: 'center'
+        maxWidth: 420,
+        alignSelf: 'center',
+        padding: Spacing['2xl'],
     },
     loginButton: {
-        marginTop: 8
+        marginTop: Spacing.md
     },
     footer: {
-        marginTop: 40,
+        marginTop: Spacing['3xl'],
         alignItems: 'center'
     },
     footerText: {
-        fontSize: 14,
-        color: '#666',
+        fontSize: Typography.fontSize.sm,
+        color: Colors.text.secondary,
         textAlign: 'center',
-        marginBottom: 16
+        marginBottom: Spacing.lg
     },
     versionText: {
-        fontSize: 12,
-        color: '#999'
+        fontSize: Typography.fontSize.xs,
+        color: Colors.text.tertiary
     },
     errorBanner: {
-        marginTop: 12,
-        backgroundColor: '#FEE2E2',
-        borderRadius: 8,
-        padding: 12,
+        marginTop: Spacing.md,
+        backgroundColor: Colors.error.light,
+        borderRadius: BorderRadius.md,
+        padding: Spacing.md,
         borderLeftWidth: 4,
-        borderLeftColor: '#DC2626'
+        borderLeftColor: Colors.error.main
     },
     errorBannerText: {
-        color: '#DC2626',
-        fontSize: 14,
-        fontWeight: '500'
+        color: Colors.error.main,
+        fontSize: Typography.fontSize.sm,
+        fontWeight: Typography.fontWeight.medium
     }
 });
