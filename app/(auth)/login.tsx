@@ -4,7 +4,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Colors, Typography, Spacing, BorderRadius } from '../../constants/designSystem';
 import { Button } from '../../src/components/common/Button';
 import { Card } from '../../src/components/common/Card';
@@ -111,7 +111,11 @@ export default function LoginScreen() {
                     {/* Logo/Header */}
                     <View style={styles.header}>
                         <View style={styles.logoContainer}>
-                            <Ionicons name="business" size={48} color={Colors.primary[600]} />
+                            <Image 
+                                source={require('../../assets/images/app-logo.png')} 
+                                style={styles.logoImage}
+                                resizeMode="contain"
+                            />
                         </View>
                         <Text style={styles.title}>eRoyal</Text>
                         <Text style={styles.subtitle}>Premium Housing Society Management</Text>
@@ -202,8 +206,9 @@ const styles = StyleSheet.create({
         shadowRadius: 16,
         elevation: 8,
     },
-    logo: {
-        fontSize: 48,
+    logoImage: {
+        width: 80,
+        height: 80,
     },
     title: {
         fontSize: Typography.fontSize['3xl'],
