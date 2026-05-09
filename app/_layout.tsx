@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { LoadingSpinner } from '../src/components/common/LoadingSpinner';
+import { SplashScreen } from '../src/components/common/SplashScreen';
 import { AppDataProvider } from '../src/contexts/AppDataContext';
 import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
 import { logger } from '../src/utils/logger';
@@ -75,7 +75,7 @@ function RootLayoutNav() {
   }, [currentUser, userRole, loading, segments, router]);
 
   if (loading) {
-    return <LoadingSpinner message="Loading eRoyal..." />;
+    return <SplashScreen />;
   }
 
   return (
