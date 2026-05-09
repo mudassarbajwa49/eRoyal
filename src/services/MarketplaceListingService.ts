@@ -8,6 +8,7 @@ import { STORAGE_FOLDERS, uploadMultipleImages } from './imageService';
 
 /**
  * Create a new property listing
+ * OPTIMIZED: Saves listing instantly, uploads photos in background.
  * For residents: Status starts as 'Pending' - requires admin approval
  * For admins: Status is 'Approved' - immediately visible
  */
@@ -37,7 +38,7 @@ export const createListing = async (
             reviewedAt: null
         };
 
-        // Create listing document first to get listingId
+        // Save listing document immediately with empty photos
         const listingRef = await addDoc(collection(db, 'listings'), {
             type: listingData.type,
             price: listingData.price,
@@ -45,7 +46,7 @@ export const createListing = async (
             location: listingData.location,
             contact: listingData.contact,
             description: listingData.description.trim(),
-            photos: [], // Will update after upload
+            photos: [], // Will be updated after background upload
             status: status,
             postedBy: postedBy,
             postedByName: postedByName,
@@ -55,27 +56,30 @@ export const createListing = async (
             rejectionReason: null
         });
 
-        // Upload images to Firebase Storage with user-specific folder
-        const uploadResult = await uploadMultipleImages(
-            listingData.photoUris,
-            STORAGE_FOLDERS.MARKETPLACE,
-            postedBy,
-            listingRef.id
-        );
-
-        if (!uploadResult.success || !uploadResult.urls) {
-            // Delete the listing if image upload fails
-            await deleteDoc(doc(db, 'listings', listingRef.id));
-            return {
-                success: false,
-                error: 'Failed to upload property images'
-            };
-        }
-
-        // Update listing with photo URLs
-        await updateDoc(doc(db, 'listings', listingRef.id), {
-            photos: uploadResult.urls
-        });
+        // Upload images in the BACKGROUND — don't block the user
+        const listingId = listingRef.id;
+        const photoUris = [...listingData.photoUris];
+        (async () => {
+            try {
+                const uploadResult = await uploadMultipleImages(
+                    photoUris,
+                    STORAGE_FOLDERS.MARKETPLACE,
+                    postedBy,
+                    listingId
+                );
+                if (uploadResult.success && uploadResult.urls && uploadResult.urls.length > 0) {
+                    await updateDoc(doc(db, 'listings', listingId), {
+                        photos: uploadResult.urls
+                    });
+                    console.log('✅ Listing photos uploaded in background');
+                } else {
+                    // If upload fails, mark listing as having no photos
+                    console.warn('⚠️ Background photo upload failed for listing:', listingId);
+                }
+            } catch (e) {
+                console.warn('⚠️ Background photo upload error:', e);
+            }
+        })();
 
         const message = isAdmin
             ? 'Listing published successfully'

@@ -127,7 +127,16 @@ export default function AdminDashboard() {
                     {menuItems.map((item, index) => (
                         <TouchableOpacity
                             key={index}
-                            style={styles.menuItem}
+                            style={[
+                                styles.menuItem,
+                                {
+                                    width: breakpoint.desktop
+                                        ? '31%'
+                                        : breakpoint.tablet
+                                        ? '48%'
+                                        : '100%',
+                                }
+                            ]}
                             onPress={() => router.push(item.route as any)}
                             activeOpacity={0.7}
                         >
@@ -203,9 +212,12 @@ const styles = StyleSheet.create({
         textAlign: 'center'
     },
     menuGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
         // Gap handled inline
     },
     menuItem: {
+        // Width controlled inline via breakpoint
         marginBottom: 4
     },
     menuCard: {

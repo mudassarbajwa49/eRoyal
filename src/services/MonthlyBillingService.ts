@@ -55,29 +55,26 @@ export const generateMonthlyBills = async (
         let skippedCount = 0;
         let complaintsProcessed = 0;
 
-        // Get all residents (users with role 'resident')
-        const usersQuery = query(
-            collection(db, 'users'),
-            where('role', '==', 'resident')
-        );
-        const usersSnapshot = await getDocs(usersQuery);
+        // OPTIMIZED: Fetch ALL residents and ALL existing bills for this month
+        // in parallel — 2 reads total instead of N+1 reads
+        const [usersSnapshot, existingBillsSnapshot] = await Promise.all([
+            getDocs(query(collection(db, 'users'), where('role', '==', 'resident'))),
+            getDocs(query(collection(db, 'bills'), where('month', '==', month))),
+        ]);
 
-        logger.log(`Generating bills for ${usersSnapshot.size} residents for ${month}`);
+        // Build a Set of residentIds that already have a bill this month (O(1) lookup)
+        const residentsWithBill = new Set(
+            existingBillsSnapshot.docs.map(d => d.data().residentId as string)
+        );
+
+        logger.log(`Generating bills for ${usersSnapshot.size} residents for ${month}. Already billed: ${residentsWithBill.size}`);
 
         for (const userDoc of usersSnapshot.docs) {
             const userData = userDoc.data();
             const residentId = userDoc.id;
 
-            // CHECK IF BILL ALREADY EXISTS FOR THIS MONTH
-            const existingBillQuery = query(
-                collection(db, 'bills'),
-                where('residentId', '==', residentId),
-                where('month', '==', month)
-            );
-            const existingBillSnapshot = await getDocs(existingBillQuery);
-
-            // Skip if bill already exists for this resident for this month
-            if (!existingBillSnapshot.empty) {
+            // CHECK IF BILL ALREADY EXISTS — instant in-memory lookup, no Firestore read
+            if (residentsWithBill.has(residentId)) {
                 logger.log(`Skipping ${userData.name} - bill already exists for ${month}`);
                 skippedCount++;
                 continue;

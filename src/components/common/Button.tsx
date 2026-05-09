@@ -1,97 +1,139 @@
 // Common Components - Button
 // Reusable button component with consistent styling
 
-import React from 'react';
-import { ActivityIndicator, StyleProp, StyleSheet, Text, TextStyle, TouchableOpacity, ViewStyle } from 'react-native';
-import { BorderRadius, Colors, Spacing, Typography, Shadows } from '../../../constants/designSystem';
+import * as Haptics from 'expo-haptics';
+import React, { useCallback } from 'react';
+import {
+    ActivityIndicator,
+    InteractionManager,
+    Platform,
+    StyleProp,
+    StyleSheet,
+    Text,
+    TextStyle,
+    TouchableOpacity,
+    ViewStyle,
+} from 'react-native';
+import { BorderRadius, Colors, Shadows, Spacing, Typography } from '../../../constants/designSystem';
 
 interface ButtonProps {
     title: string;
     onPress: () => void;
-    variant?: 'primary' | 'secondary' | 'danger' | 'success';
+    variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'success';
     loading?: boolean;
     disabled?: boolean;
     fullWidth?: boolean;
     style?: StyleProp<ViewStyle>;
+    textStyle?: StyleProp<TextStyle>;
+    /**
+     * If true, the onPress callback runs AFTER the current animation frame
+     * finishes (via InteractionManager). Use this on navigation buttons so
+     * the haptic + opacity animation plays smoothly before the new screen
+     * starts mounting. Default: false (fires immediately, good for form submits).
+     */
+    deferPress?: boolean;
 }
 
-export const Button: React.FC<ButtonProps> = ({
+export const Button: React.FC<ButtonProps> = React.memo(({
     title,
     onPress,
     variant = 'primary',
     loading = false,
     disabled = false,
     fullWidth = false,
-    style
+    style,
+    textStyle,
+    deferPress = false,
 }) => {
-    const getButtonStyle = (): StyleProp<ViewStyle> => {
+    const handlePress = useCallback(() => {
+        if (disabled || loading) return;
+
+        // Instant haptic feedback so user knows the tap registered
+        if (Platform.OS !== 'web') {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
+
+        if (deferPress) {
+            // Let the animation frame complete before heavy work
+            InteractionManager.runAfterInteractions(() => {
+                onPress();
+            });
+        } else {
+            onPress();
+        }
+    }, [disabled, loading, deferPress, onPress]);
+
+    const buttonStyle = useCallback((): StyleProp<ViewStyle> => {
         const baseStyle = [
             styles.button,
             fullWidth && styles.fullWidth
         ];
 
         switch (variant) {
-            case 'primary':
-                return [...baseStyle, styles.primaryButton];
-            case 'secondary':
-                return [...baseStyle, styles.secondaryButton];
-            case 'danger':
-                return [...baseStyle, styles.dangerButton];
-            case 'success':
-                return [...baseStyle, styles.successButton];
-            default:
-                return [...baseStyle, styles.primaryButton];
+            case 'primary':   return [...baseStyle, styles.primaryButton];
+            case 'secondary': return [...baseStyle, styles.secondaryButton];
+            case 'outline':   return [...baseStyle, styles.outlineButton];
+            case 'danger':    return [...baseStyle, styles.dangerButton];
+            case 'success':   return [...baseStyle, styles.successButton];
+            default:          return [...baseStyle, styles.primaryButton];
         }
-    };
+    }, [variant, fullWidth]);
 
-    const getTextStyle = (): TextStyle => {
+    const textStyleForVariant = useCallback((): TextStyle => {
         switch (variant) {
-            case 'secondary':
-                return styles.secondaryText;
-            default:
-                return styles.buttonText;
+            case 'secondary': return styles.secondaryText;
+            case 'outline':   return styles.outlineText;
+            default:          return styles.buttonText;
         }
-    };
+    }, [variant]);
 
     return (
         <TouchableOpacity
             style={[
-                getButtonStyle(),
+                buttonStyle(),
                 (disabled || loading) && styles.disabledButton,
                 style
             ]}
-            onPress={onPress}
+            onPress={handlePress}
             disabled={disabled || loading}
-            activeOpacity={0.7}
+            activeOpacity={0.55}
         >
             {loading ? (
-                <ActivityIndicator color={variant === 'secondary' ? Colors.primary[600] : Colors.text.inverse} />
+                <ActivityIndicator
+                    color={
+                        variant === 'secondary' || variant === 'outline'
+                            ? Colors.primary[600]
+                            : Colors.text.inverse
+                    }
+                />
             ) : (
-                <Text style={getTextStyle()}>{title}</Text>
+                <Text style={[textStyleForVariant(), textStyle]}>{title}</Text>
             )}
         </TouchableOpacity>
     );
-};
+});
+
+Button.displayName = 'Button';
 
 const styles = StyleSheet.create({
     button: {
-        paddingVertical: Spacing.md + 2, // Slightly taller
+        paddingVertical: Spacing.md + 2,
         paddingHorizontal: Spacing.xl,
         borderRadius: BorderRadius.full, // Pill-shaped buttons look more premium
         alignItems: 'center',
         justifyContent: 'center',
-        minHeight: 52, // Better touch target
+        minHeight: 52,
     },
     fullWidth: {
         width: '100%',
     },
     primaryButton: {
         backgroundColor: Colors.primary[600],
-        ...Shadows.sm, // Subtle shadow for primary button
+        ...Shadows.sm,
     },
     secondaryButton: {
         backgroundColor: Colors.background.surface,
-        borderWidth: 1.5, // Slightly thicker border
+        borderWidth: 1.5,
         borderColor: Colors.border.main,
     },
     dangerButton: {
@@ -107,10 +149,21 @@ const styles = StyleSheet.create({
         color: Colors.text.inverse,
         fontSize: Typography.fontSize.base,
         fontWeight: Typography.fontWeight.semibold,
-        letterSpacing: 0.3, // Touch of elegance
+        letterSpacing: 0.3,
     },
     secondaryText: {
         color: Colors.text.primary,
+        fontSize: Typography.fontSize.base,
+        fontWeight: Typography.fontWeight.semibold,
+        letterSpacing: 0.3,
+    },
+    outlineButton: {
+        backgroundColor: 'transparent',
+        borderWidth: 1.5,
+        borderColor: Colors.primary[600],
+    },
+    outlineText: {
+        color: Colors.primary[600],
         fontSize: Typography.fontSize.base,
         fontWeight: Typography.fontWeight.semibold,
         letterSpacing: 0.3,

@@ -33,7 +33,9 @@ export default function ResidentLayout() {
                 ),
                 gestureEnabled: true,
                 fullScreenGestureEnabled: true,
+                gestureResponseDistance: 80,
                 animation: 'slide_from_right',
+                animationDuration: 260,
             }}
         >
             <Stack.Screen

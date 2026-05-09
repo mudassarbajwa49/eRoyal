@@ -10,7 +10,7 @@
  */
 
 import { useRouter } from 'expo-router';
-import { collection, deleteDoc, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { collection, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
 import React, { useCallback, useMemo } from 'react';
 import { Alert, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { db } from '../../../firebaseConfig';
@@ -43,7 +43,7 @@ export default function UsersIndex() {
         // Listen to residents collection
         const residentsQuery = query(collection(db, 'residents'), orderBy('createdAt', 'desc'));
         const unsubResidents = onSnapshot(residentsQuery, (snapshot) => {
-            const residentsData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as unknown as UserProfile);
+            const residentsData = snapshot.docs.map(docSnap => ({ ...docSnap.data(), id: docSnap.id }) as unknown as UserProfile);
             console.log(`✅ Residents updated: ${residentsData.length} residents`);
             updateUsers(residentsData, 'residents');
         }, (error) => {
@@ -54,7 +54,7 @@ export default function UsersIndex() {
         // Listen to security_staff collection
         const securityQuery = query(collection(db, 'security_staff'), orderBy('createdAt', 'desc'));
         const unsubSecurity = onSnapshot(securityQuery, (snapshot) => {
-            const securityData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as unknown as UserProfile);
+            const securityData = snapshot.docs.map(docSnap => ({ ...docSnap.data(), id: docSnap.id }) as unknown as UserProfile);
             console.log(`✅ Security updated: ${securityData.length} security staff`);
             updateUsers(securityData, 'security');
         }, (error) => {
@@ -65,7 +65,7 @@ export default function UsersIndex() {
         // Listen to admins collection
         const adminsQuery = query(collection(db, 'admins'), orderBy('createdAt', 'desc'));
         const unsubAdmins = onSnapshot(adminsQuery, (snapshot) => {
-            const adminsData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as unknown as UserProfile);
+            const adminsData = snapshot.docs.map(docSnap => ({ ...docSnap.data(), id: docSnap.id }) as unknown as UserProfile);
             console.log(`✅ Admins updated: ${adminsData.length} admins`);
             updateUsers(adminsData, 'admins');
         }, (error) => {
@@ -112,20 +112,22 @@ export default function UsersIndex() {
     };
 
     /**
-     * Delete a user from Firestore
-     * Includes confirmation and error handling
+     * Soft-delete a user:
+     * - Marks the Firestore doc as deleted (keeps all historical data)
+     * - Does NOT delete bills, complaints, vehicles or logs
+     * - The user can no longer log in (Firebase Auth account stays but is deactivated in our DB)
      */
     const handleDeleteUser = async (user: UserProfile) => {
         Alert.alert(
-            'Delete User',
-            `Are you sure you want to delete ${user.name}?\n\nThis action cannot be undone and will:\n• Remove user from database\n• Delete all user data`,
+            'Deactivate User',
+            `Deactivate ${user.name}?\n\nThis will:\n• Prevent the user from logging in\n• Keep all their bills, complaints and records\n\nData is NEVER deleted.`,
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
-                    text: 'Delete',
+                    text: 'Deactivate',
                     style: 'destructive',
                     onPress: async () => {
-                        console.log('🗑️ Starting deletion for user:', user);
+                        console.log('🔒 Soft-deleting user:', user.uid);
 
                         try {
                             const getCollectionName = (role: string) => {
@@ -136,31 +138,26 @@ export default function UsersIndex() {
                             };
 
                             const collectionName = getCollectionName(user.role);
-                            console.log(`📁 Deleting from collection: ${collectionName}, UID: ${user.uid}`);
+                            const updatePayload = {
+                                deleted: true,
+                                deletedAt: serverTimestamp(),
+                            };
 
-                            await deleteDoc(doc(db, collectionName, user.uid));
-                            console.log(`✅ Successfully deleted from ${collectionName}`);
+                            // Mark as deleted in role-specific collection
+                            await updateDoc(doc(db, collectionName, user.uid), updatePayload);
 
+                            // Also mark in main users collection
                             try {
-                                await deleteDoc(doc(db, 'users', user.uid));
-                                console.log('✅ Successfully deleted from users backup');
+                                await updateDoc(doc(db, 'users', user.uid), updatePayload);
                             } catch (e) {
-                                console.log('ℹ️ No backup user doc to delete (this is okay)');
+                                // It's okay if the users doc doesn't exist
                             }
 
-                            console.log('✅ Deletion complete!');
-                            Alert.alert('Success', `${user.name} has been deleted successfully`);
+                            console.log('✅ User soft-deleted (data preserved)');
+                            Alert.alert('Done', `${user.name} has been deactivated. All their data is preserved.`);
                         } catch (error: any) {
-                            console.error('❌ ERROR deleting user:', error);
-
-                            let errorMessage = 'Failed to delete user. ';
-                            if (error.code === 'permission-denied') {
-                                errorMessage += 'Permission denied. Check Firestore rules.';
-                            } else {
-                                errorMessage += error.message || 'Unknown error';
-                            }
-
-                            Alert.alert('Error', errorMessage);
+                            console.error('❌ ERROR deactivating user:', error);
+                            Alert.alert('Error', error.message || 'Failed to deactivate user');
                         }
                     }
                 }

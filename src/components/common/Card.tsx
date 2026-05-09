@@ -10,13 +10,15 @@ interface CardProps {
     style?: StyleProp<ViewStyle>;
 }
 
-export const Card: React.FC<CardProps> = ({ children, style }) => {
+export const Card: React.FC<CardProps> = React.memo(({ children, style }) => {
     return (
         <View style={[styles.card, style]}>
             {children}
         </View>
     );
-};
+});
+
+Card.displayName = 'Card';
 
 const styles = StyleSheet.create({
     card: {

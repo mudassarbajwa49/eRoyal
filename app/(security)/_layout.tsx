@@ -28,6 +28,8 @@ export default function SecurityLayout() {
                         fontWeight: Typography.fontWeight.semibold,
                         fontSize: Typography.fontSize.lg,
                     },
+                    animation: 'slide_from_right',
+                    animationDuration: 260,
                     gestureEnabled: false,
                     headerRight: () => (
                         <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>

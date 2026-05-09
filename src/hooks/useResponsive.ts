@@ -2,8 +2,7 @@
 // React hook for responsive design with dimension updates
 
 import { useEffect, useState } from 'react';
-import { Dimensions, ScaledSize } from 'react-native';
-import { getDeviceType, isPortrait } from '../utils/responsive';
+import { Dimensions, Platform, ScaledSize } from 'react-native';
 
 interface ResponsiveState {
     width: number;
@@ -27,12 +26,23 @@ export const useResponsive = (): ResponsiveState => {
         return () => subscription?.remove();
     }, []);
 
+    // Derive reactively from dimensions so web resize works correctly
+    const portrait = dimensions.height >= dimensions.width;
+    const deviceType: 'phone' | 'tablet' | 'desktop' = (() => {
+        if (Platform.OS === 'web') {
+            if (dimensions.width >= 1024) return 'desktop';
+            if (dimensions.width >= 768) return 'tablet';
+            return 'phone';
+        }
+        return dimensions.width >= 768 ? 'tablet' : 'phone';
+    })();
+
     return {
         width: dimensions.width,
         height: dimensions.height,
-        isPortrait: isPortrait(),
-        isLandscape: !isPortrait(),
-        deviceType: getDeviceType(),
+        isPortrait: portrait,
+        isLandscape: !portrait,
+        deviceType,
     };
 };
 

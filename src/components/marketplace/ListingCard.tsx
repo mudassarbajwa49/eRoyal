@@ -304,6 +304,14 @@ export const ListingCard: React.FC<ListingCardProps> = ({
                 <Button title={`📞 Contact: ${listing.contact}`} onPress={handleContact} variant="primary" fullWidth style={styles.contactBtn} />
             )}
 
+            {/* ── Contact number visible to Admin ─────────────────────────── */}
+            {isAdmin && listing.contact && (
+                <View style={styles.contactRow}>
+                    <Text style={styles.contactLabel}>📞 Contact Number</Text>
+                    <Text style={styles.contactValue}>{listing.contact}</Text>
+                </View>
+            )}
+
             {/* Rejection reason in admin view */}
             {isAdmin && listing.rejectionReason && (
                 <View style={styles.rejectionBox}>
@@ -375,6 +383,20 @@ const styles = StyleSheet.create({
     adminRow: { flexDirection: 'row', gap: 12, marginTop: 14 },
     halfBtn: { flex: 1 },
     contactBtn: { marginTop: 12 },
+    contactRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: '#F0FDF4',
+        borderRadius: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        marginTop: 12,
+        borderWidth: 1,
+        borderColor: '#BBF7D0',
+    },
+    contactLabel: { fontSize: 13, color: '#15803D', fontWeight: '600' },
+    contactValue: { fontSize: 14, color: '#166534', fontWeight: '700' },
 
     // Rejection
     rejectionBox: { backgroundColor: '#FFF1F2', padding: 12, borderRadius: 10, marginTop: 10 },

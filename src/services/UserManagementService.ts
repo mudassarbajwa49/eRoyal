@@ -4,6 +4,7 @@
 import { collection, getDocs, orderBy, query, where } from 'firebase/firestore';
 import { db } from '../../firebaseConfig';
 import { UserProfile } from '../types';
+import { normalizeHouseNo } from '../utils/normalizeHouseNo';
 
 /**
  * Get Firestore collection name based on user role
@@ -118,10 +119,14 @@ export const searchUsers = async (searchTerm: string, role?: 'resident' | 'secur
         const users = role ? await getUsersByRole(role) : await getAllUsers();
 
         const lowerSearch = searchTerm.toLowerCase();
+        // Normalize houseNo search term so "A-12" and "A12" both work
+        const normalizedSearch = normalizeHouseNo(searchTerm);
+
         return users.filter(user =>
             user.name?.toLowerCase().includes(lowerSearch) ||
             user.email?.toLowerCase().includes(lowerSearch) ||
-            user.houseNo?.toLowerCase().includes(lowerSearch)
+            // Compare normalized houseNo against normalized search term
+            normalizeHouseNo(user.houseNo || '').includes(normalizedSearch)
         );
     } catch (error) {
         console.error('❌ Error searching users:', error);

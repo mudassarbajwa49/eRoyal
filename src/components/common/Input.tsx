@@ -2,7 +2,7 @@
 // Reusable text input component with label and validation
 
 import React from 'react';
-import { StyleSheet, Text, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
+import { Platform, StyleSheet, Text, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
 import { BorderRadius, Colors, Spacing, Typography } from '../../../constants/designSystem';
 
 interface InputProps extends TextInputProps {
@@ -33,6 +33,8 @@ export const Input: React.FC<InputProps> = ({
                     error && styles.inputError
                 ]}
                 placeholderTextColor={Colors.text.tertiary}
+                // Remove browser default blue outline on web
+                {...(Platform.OS === 'web' ? { outlineWidth: 0 } as any : {})}
                 {...textInputProps}
             />
             {error && <Text style={styles.errorText}>{error}</Text>}

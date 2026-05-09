@@ -16,6 +16,7 @@ import {
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { db, storage } from '../../firebaseConfig';
 import { ApiResponse, VehicleLog, VehicleType } from '../types';
+import { normalizeHouseNo } from '../utils/normalizeHouseNo';
 
 /**
  * Upload a captured entry photo to Firebase Storage.
@@ -152,7 +153,8 @@ export const logVehicleExit = async (logId: string, exitPhotoUrl?: string | null
  */
 export const searchResidentByHouse = async (houseNo: string): Promise<any | null> => {
     try {
-        const normalizedHouseNo = houseNo.trim().toUpperCase();
+        // Normalize: strip all special characters, uppercase only (e.g. "A-12" → "A12")
+        const normalizedHouseNo = normalizeHouseNo(houseNo);
 
         if (!normalizedHouseNo) return null;
 

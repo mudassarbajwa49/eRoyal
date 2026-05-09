@@ -20,6 +20,7 @@ export interface Announcement {
 
 /**
  * Create announcement with optional images
+ * OPTIMIZED: Saves announcement instantly, uploads images in background.
  */
 export const createAnnouncement = async (
     title: string,
@@ -30,28 +31,38 @@ export const createAnnouncement = async (
     imageUris?: string[]
 ): Promise<ApiResponse> => {
     try {
-        let imageUrls: string[] = [];
-
-        // Upload images to Firebase Storage if provided
-        if (imageUris && imageUris.length > 0) {
-            const result = await uploadMultipleImages(imageUris, 'announcements');
-            if (result.success && result.urls) {
-                imageUrls = result.urls;
-            }
-        }
-
-        // Create announcement in Firestore
+        // Save announcement immediately with empty imageUrls
         const announcementData = {
             title: title.trim(),
             message: message.trim(),
             priority,
             createdBy: adminId,
             createdByName: adminName,
-            imageUrls: imageUrls.length > 0 ? imageUrls : [],
+            imageUrls: [],
             createdAt: serverTimestamp(),
         };
 
         const docRef = await addDoc(collection(db, 'announcements'), announcementData);
+
+        // Upload images in the BACKGROUND — don't block the user
+        if (imageUris && imageUris.length > 0) {
+            const announcementId = docRef.id;
+            const urisToUpload = [...imageUris];
+            (async () => {
+                try {
+                    const result = await uploadMultipleImages(urisToUpload, 'announcements');
+                    if (result.success && result.urls && result.urls.length > 0) {
+                        const { doc: firestoreDoc, updateDoc } = await import('firebase/firestore');
+                        await updateDoc(firestoreDoc(db, 'announcements', announcementId), {
+                            imageUrls: result.urls,
+                        });
+                        console.log('✅ Announcement images uploaded in background');
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Background image upload failed:', e);
+                }
+            })();
+        }
 
         return {
             success: true,

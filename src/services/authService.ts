@@ -6,6 +6,7 @@ import { createUserWithEmailAndPassword, initializeAuth, inMemoryPersistence } f
 import { doc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db, firebaseConfig } from '../../firebaseConfig';
 import { ApiResponse, CreateUserFormData } from '../types';
+import { normalizeHouseNo } from '../utils/normalizeHouseNo';
 
 /**
  * Create a new user account (Admin only)
@@ -61,12 +62,15 @@ export const createUserAccount = async (
         const collectionName = getCollectionNameByRole(role);
         console.log(`📁 Saving user to collection: ${collectionName}`);
 
+        // Normalize houseNo — strip all special characters, uppercase only
+        const normalizedHouseNo = role === 'resident' ? normalizeHouseNo(houseNo || '') : null;
+
         // Create Firestore user profile in role-specific collection
         const userProfileData = {
             uid: user.uid,
             name: name.trim(),
             email: email.toLowerCase().trim(),
-            houseNo: role === 'resident' ? houseNo?.trim() : null,
+            houseNo: normalizedHouseNo,
             cnic: cnic?.trim() || null,
             role: role,
             createdAt: serverTimestamp(),

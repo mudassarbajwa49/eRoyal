@@ -5,11 +5,13 @@ import { Colors } from '../../../constants/designSystem';
 export const SplashScreen: React.FC = () => {
     return (
         <View style={styles.container}>
-            <Image 
-                source={require('../../../assets/images/app-logo.png')} 
-                style={styles.logo}
-                resizeMode="contain"
-            />
+            <View style={styles.logoContainer}>
+                <Image 
+                    source={require('../../../assets/images/app-logo.png')} 
+                    style={styles.logo}
+                    resizeMode="contain"
+                />
+            </View>
             <View style={styles.loaderContainer}>
                 <ActivityIndicator size="large" color="#FFFFFF" />
             </View>
@@ -22,11 +24,24 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#0f766e', // Matches our brand teal in app.json
+        backgroundColor: Colors.primary[600], // Exact theme teal
+    },
+    logoContainer: {
+        width: 140,
+        height: 140,
+        backgroundColor: Colors.background.surface, // White circle
+        borderRadius: 70, // Half of width/height for perfect circle
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.2,
+        shadowRadius: 16,
+        elevation: 10,
     },
     logo: {
-        width: 200,
-        height: 200,
+        width: 100,
+        height: 100,
     },
     loaderContainer: {
         position: 'absolute',

@@ -21,6 +21,11 @@ export default function AdminLayout() {
             <Stack
                 screenOptions={{
                     headerShown: true,
+                    animation: 'slide_from_right',
+                    animationDuration: 260,
+                    gestureEnabled: true,
+                    fullScreenGestureEnabled: true,
+                    gestureResponseDistance: 80,
                     headerStyle: {
                         backgroundColor: Colors.primary[600]
                     },
@@ -29,8 +34,6 @@ export default function AdminLayout() {
                         fontWeight: Typography.fontWeight.semibold,
                         fontSize: Typography.fontSize.lg,
                     },
-                    gestureEnabled: true,
-                    fullScreenGestureEnabled: true,
                     headerRight: () => (
                         <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
                             <Text style={styles.logoutText}>Logout</Text>

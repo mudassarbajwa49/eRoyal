@@ -118,7 +118,8 @@ export default function LoginScreen() {
                             />
                         </View>
                         <Text style={styles.title}>eRoyal</Text>
-                        <Text style={styles.subtitle}>Premium Housing Society Management</Text>
+                        <Text style={styles.subtitle}>Royal City</Text>
+                        <Text style={styles.subtitle}>Housing Society Management</Text>
                     </View>
 
                     {/* Login Form in a Card */}

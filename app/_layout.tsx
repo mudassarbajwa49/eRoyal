@@ -1,7 +1,8 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import * as NativeSplashScreen from 'expo-splash-screen';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -10,11 +11,26 @@ import { AppDataProvider } from '../src/contexts/AppDataContext';
 import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
 import { logger } from '../src/utils/logger';
 
+// Prevent the splash screen from auto-hiding before auth is loaded.
+NativeSplashScreen.preventAutoHideAsync();
+
 // Protected Route Handler
 function RootLayoutNav() {
   const { currentUser, userRole, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const [minTimePassed, setMinTimePassed] = useState(false);
+
+  // Force splash screen to show for at least 2 seconds
+  useEffect(() => {
+    // Hide the native splash screen immediately to reveal our custom JS splash screen
+    NativeSplashScreen.hideAsync();
+    
+    const timer = setTimeout(() => {
+      setMinTimePassed(true);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     logger.log('RootLayout: Auth state changed', {
@@ -24,7 +40,7 @@ function RootLayoutNav() {
       segments
     });
 
-    if (loading) return;
+    if (loading || !minTimePassed) return;
 
     const inAuthGroup = segments[0] === '(auth)';
     const inAdminGroup = segments[0] === '(admin)';
@@ -72,9 +88,9 @@ function RootLayoutNav() {
     } else if (currentUser && !userRole) {
       logger.warn('User logged in but role not loaded yet');
     }
-  }, [currentUser, userRole, loading, segments, router]);
+  }, [currentUser, userRole, loading, minTimePassed, segments, router]);
 
-  if (loading) {
+  if (loading || !minTimePassed) {
     return <SplashScreen />;
   }
 
@@ -83,9 +99,10 @@ function RootLayoutNav() {
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
-        animationDuration: 220,
+        animationDuration: 280,
         gestureEnabled: true,
         fullScreenGestureEnabled: true,
+        gestureResponseDistance: 80,
         contentStyle: { backgroundColor: '#F5F7FA' }
       }}
     >

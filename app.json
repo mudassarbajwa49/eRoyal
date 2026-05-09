@@ -47,9 +47,9 @@
           "image": "./assets/images/app-logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#0f766e",
+          "backgroundColor": "#0D9488",
           "dark": {
-            "backgroundColor": "#0f766e"
+            "backgroundColor": "#0D9488"
           }
         }
       ]

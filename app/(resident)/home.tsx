@@ -315,7 +315,16 @@ export default function ResidentHome() {
                         {menuItems.map((item, index) => (
                             <TouchableOpacity
                                 key={index}
-                                style={styles.menuItem}
+                                style={[
+                                    styles.menuItem,
+                                    {
+                                        width: breakpoint.desktop
+                                            ? '23%'
+                                            : breakpoint.tablet
+                                            ? '31%'
+                                            : '48%',
+                                    }
+                                ]}
                                 onPress={() => router.push(item.route as any)}
                                 activeOpacity={0.7}
                             >
@@ -490,7 +499,7 @@ const styles = StyleSheet.create({
         flexWrap: 'wrap',
     },
     menuItem: {
-        width: '48%',
+        // Width controlled inline via breakpoint
     },
     menuCard: {
         alignItems: 'center',

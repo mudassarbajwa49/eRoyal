@@ -18,6 +18,7 @@ import { uploadImage, uriToBlob } from './FirebaseStorageService';
 
 /**
  * Create a new complaint (Resident)
+ * OPTIMIZED: Saves complaint instantly, uploads photo in background.
  */
 export const createComplaint = async (
     complaintData: CreateComplaintFormData,
@@ -26,15 +27,6 @@ export const createComplaint = async (
     houseNo: string
 ): Promise<ApiResponse> => {
     try {
-        let imageUrl: string | null = null;
-
-        // Upload photo if provided
-        if (complaintData.photoUri) {
-            const blob = await uriToBlob(complaintData.photoUri);
-            const uploadResult = await uploadImage(blob, 'complaints');
-            imageUrl = uploadResult.url;
-        }
-
         // Generate complaint number using Firestore transaction
         const { runTransaction, doc: firestoreDoc } = await import('firebase/firestore');
 
@@ -50,13 +42,12 @@ export const createComplaint = async (
                 transaction.set(counterRef, { count: newCount });
             }
 
-            // Format as C001, C002, etc.
             return `C${String(newCount).padStart(3, '0')}`;
         });
 
         console.log('✅ Generated complaint number:', complaintNumber);
 
-        // Create complaint in Firestore
+        // Save complaint to Firestore immediately (no photo yet)
         const complaintDoc = {
             complaintNumber,
             title: complaintData.title.trim(),
@@ -67,12 +58,33 @@ export const createComplaint = async (
             residentId,
             residentName,
             houseNo,
-            imageUrl: imageUrl || null,
+            imageUrl: null, // Will be updated after background upload
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
         };
 
         const docRef = await addDoc(collection(db, 'complaints'), complaintDoc);
+
+        // Upload photo in the BACKGROUND — don't block the user
+        if (complaintData.photoUri) {
+            const photoUri = complaintData.photoUri;
+            const complaintId = docRef.id;
+            (async () => {
+                try {
+                    const blob = await uriToBlob(photoUri);
+                    const uploadResult = await uploadImage(blob, 'complaints');
+                    if (uploadResult.url) {
+                        await updateDoc(doc(db, 'complaints', complaintId), {
+                            imageUrl: uploadResult.url,
+                            updatedAt: serverTimestamp(),
+                        });
+                        console.log('✅ Complaint photo uploaded in background');
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Background photo upload failed:', e);
+                }
+            })();
+        }
 
         return {
             success: true,
