@@ -31,7 +31,14 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "name": "eRoyal",
+      "shortName": "eRoyal",
+      "description": "Royal City Housing Society Management App",
+      "themeColor": "#0D9488",
+      "backgroundColor": "#0D9488",
+      "display": "standalone",
+      "orientation": "portrait"
     },
     "plugins": [
       "expo-router",
