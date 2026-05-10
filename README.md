@@ -1,15 +1,5 @@
 # eRoyal - Housing Society Management System
 
-**100% FREE Firebase-based application** for managing housing society operations.
-
-## 💰 Cost: $0.00 - Completely FREE!
-
-- ✅ **Firebase Firestore** - FREE 1GB database
-- ✅ **Firebase Authentication** - Unlimited users FREE
-- ✅ **Firebase Storage** - FREE 5GB for images
-- ✅ **No Credit Card Required!**
-
----
 
 ## ⚡ Quick Setup (3 Minutes)
 
