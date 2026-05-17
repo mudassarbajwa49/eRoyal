@@ -2,11 +2,12 @@
 // This file initializes Firebase services used throughout the application
 
 import { initializeApp } from 'firebase/app';
-import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import { initializeAuth, getReactNativePersistence, getAuth, Auth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
 import { getStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 // Firebase project configuration – values loaded from .env (never hardcode secrets)
 export const firebaseConfig = {
@@ -22,9 +23,17 @@ export const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-export const auth = initializeAuth(app, {
-    persistence: getReactNativePersistence(AsyncStorage)
-});
+let auth: Auth;
+
+if (Platform.OS === 'web') {
+    auth = getAuth(app);
+} else {
+    auth = initializeAuth(app, {
+        persistence: getReactNativePersistence(AsyncStorage)
+    });
+}
+
+export { auth };
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const functions = getFunctions(app);
