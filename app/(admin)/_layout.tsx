@@ -25,7 +25,6 @@ export default function AdminLayout() {
                     animationDuration: 260,
                     gestureEnabled: true,
                     fullScreenGestureEnabled: true,
-                    gestureResponseDistance: 80,
                     headerStyle: {
                         backgroundColor: Colors.primary[600]
                     },

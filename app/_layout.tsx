@@ -102,7 +102,6 @@ function RootLayoutNav() {
         animationDuration: 280,
         gestureEnabled: true,
         fullScreenGestureEnabled: true,
-        gestureResponseDistance: 80,
         contentStyle: { backgroundColor: '#F5F7FA' }
       }}
     >

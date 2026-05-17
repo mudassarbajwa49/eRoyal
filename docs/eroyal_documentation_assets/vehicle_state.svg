@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+    <defs>
+      <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+        <path d="M2,2 L10,6 L2,10 Z" fill="#334155"/>
+      </marker>
+      <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+        <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#0f172a" flood-opacity="0.15"/>
+      </filter>
+    </defs>
+    <rect width="1200" height="720" fill="#ffffff"/>
+    <rect x="28" y="24" width="1144" height="672" rx="24" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+    <text x="600" y="76" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="800" fill="#0f172a"><tspan x="600" dy="0">Vehicle State Model</tspan></text>
+    
+      <rect x="85" y="305" width="210" height="86" rx="18" fill="#ecfeff" stroke="#0891b2" stroke-width="3"/><text x="190" y="342" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#0f172a"><tspan x="190" dy="0">Registered</tspan><tspan x="190" dy="28.32">Vehicle</tspan></text>
+      <rect x="380" y="205" width="210" height="86" rx="18" fill="#f0fdfa" stroke="#16a34a" stroke-width="3"/><text x="485" y="256.16" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#0f172a"><tspan x="485" dy="0">Entry Logged</tspan></text>
+      <rect x="380" y="425" width="210" height="86" rx="18" fill="#fff7ed" stroke="#ea580c" stroke-width="3"/><text x="485" y="476.16" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#0f172a"><tspan x="485" dy="0">Visitor Entry</tspan></text>
+      <rect x="690" y="315" width="210" height="86" rx="18" fill="#eff6ff" stroke="#2563eb" stroke-width="3"/><text x="795" y="366.16" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#0f172a"><tspan x="795" dy="0">Active Inside</tspan></text>
+      <rect x="975" y="315" width="150" height="86" rx="18" fill="#fef2f2" stroke="#dc2626" stroke-width="3"/><text x="1050" y="366.16" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#0f172a"><tspan x="1050" dy="0">Exited</tspan></text>
+      
+    <line x1="295" y1="348" x2="380" y2="248" stroke="#334155" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="337.5" y="288" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="600" fill="#334155"><tspan x="337.5" dy="0">plate lookup</tspan></text>
+  
+      
+    <line x1="295" y1="348" x2="380" y2="468" stroke="#334155" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="337.5" y="398" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="600" fill="#334155"><tspan x="337.5" dy="0">visitor data</tspan></text>
+  
+      
+    <line x1="590" y1="248" x2="690" y2="348" stroke="#334155" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="640" y="288" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="600" fill="#334155"><tspan x="640" dy="0">exitTime null</tspan></text>
+  
+      
+    <line x1="590" y1="468" x2="690" y2="348" stroke="#334155" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="640" y="398" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="600" fill="#334155"><tspan x="640" dy="0">exitTime null</tspan></text>
+  
+      
+    <line x1="900" y1="358" x2="975" y2="358" stroke="#334155" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="937.5" y="348" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="600" fill="#334155"><tspan x="937.5" dy="0">exit scan</tspan></text>
+  
+      <rect x="415" y="575" width="380" height="70" rx="18" fill="#ffffff" stroke="#94a3b8" stroke-width="3"/><text x="605" y="593.1999999999999" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="600" fill="#0f172a"><tspan x="605" dy="0">Vehicle logs remain as audit</tspan><tspan x="605" dy="23.599999999999998">records and are visible to admin,</tspan><tspan x="605" dy="23.599999999999998">security, and relevant residents.</tspan></text>
+    
+  </svg>

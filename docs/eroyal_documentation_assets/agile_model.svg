@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+    <defs>
+      <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+        <path d="M2,2 L10,6 L2,10 Z" fill="#334155"/>
+      </marker>
+      <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+        <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#0f172a" flood-opacity="0.15"/>
+      </filter>
+    </defs>
+    <rect width="1200" height="720" fill="#ffffff"/>
+    <rect x="28" y="24" width="1144" height="672" rx="24" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+    <text x="600" y="76" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="800" fill="#0f172a"><tspan x="600" dy="0">Agile Process Model</tspan></text>
+    
+      <rect x="500" y="145" width="200" height="70" rx="18" fill="#ecfeff" stroke="#0891b2" stroke-width="3"/><text x="600" y="188.16" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#0f172a"><tspan x="600" dy="0">Plan</tspan></text>
+      <rect x="760" y="270" width="210" height="70" rx="18" fill="#f0fdf4" stroke="#16a34a" stroke-width="3"/><text x="865" y="313.16" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#0f172a"><tspan x="865" dy="0">Design</tspan></text>
+      <rect x="690" y="475" width="210" height="70" rx="18" fill="#eff6ff" stroke="#2563eb" stroke-width="3"/><text x="795" y="518.16" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#0f172a"><tspan x="795" dy="0">Develop</tspan></text>
+      <rect x="300" y="475" width="210" height="70" rx="18" fill="#fef2f2" stroke="#dc2626" stroke-width="3"/><text x="405" y="518.16" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#0f172a"><tspan x="405" dy="0">Test</tspan></text>
+      <rect x="230" y="270" width="210" height="70" rx="18" fill="#fff7ed" stroke="#ea580c" stroke-width="3"/><text x="335" y="313.16" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#0f172a"><tspan x="335" dy="0">Review</tspan></text>
+      
+    <line x1="700" y1="180" x2="760" y2="304" stroke="#334155" stroke-width="4" marker-end="url(#arrow)"/>
+    
+  
+      
+    <line x1="865" y1="340" x2="795" y2="475" stroke="#334155" stroke-width="4" marker-end="url(#arrow)"/>
+    
+  
+      
+    <line x1="690" y1="510" x2="510" y2="510" stroke="#334155" stroke-width="4" marker-end="url(#arrow)"/>
+    
+  
+      
+    <line x1="405" y1="475" x2="335" y2="340" stroke="#334155" stroke-width="4" marker-end="url(#arrow)"/>
+    
+  
+      
+    <line x1="440" y1="304" x2="500" y2="180" stroke="#334155" stroke-width="4" marker-end="url(#arrow)"/>
+    
+  
+      <rect x="470" y="305" width="260" height="95" rx="18" fill="#ffffff" stroke="#94a3b8" stroke-width="3"/><text x="600" y="312.1" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="600" fill="#0f172a"><tspan x="600" dy="0">Repeat for each</tspan><tspan x="600" dy="23.599999999999998">module: users, bills,</tspan><tspan x="600" dy="23.599999999999998">complaints,</tspan><tspan x="600" dy="23.599999999999998">marketplace, vehicles,</tspan><tspan x="600" dy="23.599999999999998">AI assistant</tspan></text>
+    
+  </svg>

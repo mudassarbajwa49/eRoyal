@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+    <defs>
+      <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+        <path d="M2,2 L10,6 L2,10 Z" fill="#334155"/>
+      </marker>
+      <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+        <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#0f172a" flood-opacity="0.15"/>
+      </filter>
+    </defs>
+    <rect width="1200" height="720" fill="#ffffff"/>
+    <rect x="28" y="24" width="1144" height="672" rx="24" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+    <text x="600" y="76" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="800" fill="#0f172a"><tspan x="600" dy="0">Data Model</tspan></text>
+    
+      <rect x="485" y="130" width="230" height="70" rx="18" fill="#f0fdfa" stroke="#0d9488" stroke-width="3"/><text x="600" y="173.16" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#0f172a"><tspan x="600" dy="0">users</tspan></text>
+      <rect x="115" y="270" width="215" height="70" rx="18" fill="#eff6ff" stroke="#2563eb" stroke-width="3"/><text x="222.5" y="313.16" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#0f172a"><tspan x="222.5" dy="0">bills</tspan></text>
+      <rect x="360" y="270" width="215" height="70" rx="18" fill="#fff7ed" stroke="#ea580c" stroke-width="3"/><text x="467.5" y="313.16" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#0f172a"><tspan x="467.5" dy="0">complaints</tspan></text>
+      <rect x="625" y="270" width="215" height="70" rx="18" fill="#fdf4ff" stroke="#c026d3" stroke-width="3"/><text x="732.5" y="313.16" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#0f172a"><tspan x="732.5" dy="0">listings</tspan></text>
+      <rect x="875" y="270" width="215" height="70" rx="18" fill="#ecfeff" stroke="#0891b2" stroke-width="3"/><text x="982.5" y="312.14" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="700" fill="#0f172a"><tspan x="982.5" dy="0">registeredVehicles</tspan></text>
+      <rect x="250" y="455" width="215" height="70" rx="18" fill="#fef2f2" stroke="#dc2626" stroke-width="3"/><text x="357.5" y="498.16" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#0f172a"><tspan x="357.5" dy="0">vehicleLogs</tspan></text>
+      <rect x="510" y="455" width="215" height="70" rx="18" fill="#f0fdf4" stroke="#16a34a" stroke-width="3"/><text x="617.5" y="497.14" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="700" fill="#0f172a"><tspan x="617.5" dy="0">announcements</tspan></text>
+      <rect x="770" y="455" width="215" height="70" rx="18" fill="#eef2ff" stroke="#4f46e5" stroke-width="3"/><text x="877.5" y="497.14" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="700" fill="#0f172a"><tspan x="877.5" dy="0">notifications</tspan></text>
+      
+    <line x1="485" y1="165" x2="330" y2="305" stroke="#334155" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="407.5" y="225" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="600" fill="#334155"><tspan x="407.5" dy="0">residentId</tspan></text>
+  
+      
+    <line x1="530" y1="200" x2="465" y2="270" stroke="#334155" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="497.5" y="225" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="600" fill="#334155"><tspan x="497.5" dy="0">residentId</tspan></text>
+  
+      
+    <line x1="670" y1="200" x2="715" y2="270" stroke="#334155" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="692.5" y="225" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="600" fill="#334155"><tspan x="692.5" dy="0">postedBy</tspan></text>
+  
+      
+    <line x1="715" y1="165" x2="875" y2="305" stroke="#334155" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="795" y="225" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="600" fill="#334155"><tspan x="795" dy="0">residentId</tspan></text>
+  
+      
+    <line x1="600" y1="200" x2="358" y2="455" stroke="#334155" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="479" y="317.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="600" fill="#334155"><tspan x="479" dy="0">residentId</tspan></text>
+  
+      
+    <line x1="715" y1="200" x2="770" y2="455" stroke="#334155" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="742.5" y="317.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="600" fill="#334155"><tspan x="742.5" dy="0">userId</tspan></text>
+  
+      
+    <line x1="600" y1="200" x2="617" y2="455" stroke="#334155" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="608.5" y="317.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="600" fill="#334155"><tspan x="608.5" dy="0">createdBy</tspan></text>
+  
+    
+  </svg>

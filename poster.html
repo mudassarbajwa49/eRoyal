@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>eRoyal Exhibition Poster</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-green: #32CD32; /* Lime Green */
+            --dark-green: #006400;
+            --accent-gold: #FFD700;
+            --text-white: #ffffff;
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #0a0a0a;
+            font-family: 'Outfit', sans-serif;
+            color: var(--text-white);
+            display: flex;
+            justify-content: center;
+            padding: 50px 0;
+        }
+
+        /* Poster Container - 2:5 Aspect Ratio */
+        .poster-wrapper {
+            width: 600px; /* Scaled down for preview, 2ft equivalent */
+            height: 1500px; /* Scaled down for preview, 5ft equivalent */
+            background: url('assets/images/poster_bg.png') no-repeat center center;
+            background-size: cover;
+            position: relative;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            border: 2px solid var(--glass-border);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.7) 100%);
+            z-index: 1;
+        }
+
+        .content {
+            position: relative;
+            z-index: 2;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            padding: 60px 40px;
+            text-align: center;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+
+        .uol-logo {
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 50%;
+            padding: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            color: #006400;
+            font-size: 10px;
+        }
+
+        .fyp-tag {
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: 4px;
+            color: var(--accent-gold);
+            text-transform: uppercase;
+        }
+
+        .project-logo {
+            width: 80px;
+            height: 80px;
+            border-radius: 12px;
+        }
+
+        /* Title Section */
+        .title-section {
+            margin-top: 20px;
+            margin-bottom: 60px;
+        }
+
+        .main-title {
+            font-size: 80px;
+            font-weight: 800;
+            background: linear-gradient(to right, #fff, var(--primary-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1;
+            margin-bottom: 10px;
+        }
+
+        .sub-title {
+            font-size: 24px;
+            color: var(--primary-green);
+            font-weight: 400;
+            letter-spacing: 2px;
+        }
+
+        /* Main Features Area */
+        .features-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            text-align: left;
+        }
+
+        .feature-box {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 25px;
+            transition: transform 0.3s ease;
+        }
+
+        .feature-box h3 {
+            font-size: 24px;
+            color: var(--primary-green);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .feature-box ul {
+            list-style: none;
+        }
+
+        .feature-box ul li {
+            margin-bottom: 8px;
+            font-size: 16px;
+            color: rgba(255,255,255,0.9);
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .feature-box ul li::before {
+            content: '⚡';
+            font-size: 14px;
+        }
+
+        /* Tech Stack */
+        .tech-stack {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 40px;
+            flex-wrap: wrap;
+        }
+
+        .tech-tag {
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--primary-green);
+            padding: 8px 15px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: auto;
+            border-top: 1px solid var(--glass-border);
+            padding-top: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .supervisor-box {
+            background: linear-gradient(90deg, transparent, rgba(50, 205, 50, 0.2), transparent);
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .supervisor-name {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .students-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .student-item {
+            text-align: center;
+        }
+
+        .student-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--accent-gold);
+        }
+
+        .student-id {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="poster-wrapper">
+        <div class="overlay"></div>
+        
+        <div class="content">
+            <!-- Header -->
+            <div class="header">
+                <div class="uol-logo">
+                    <img src="https://uol.edu.pk/wp-content/uploads/2020/03/UOL-Logo.png" alt="UOL" style="width: 100%; height: auto;">
+                </div>
+                <div class="fyp-tag">Final Year Project</div>
+                <div class="project-logo">
+                    <img src="assets/images/app-logo.png" alt="eRoyal" style="width: 100%; height: 100%; object-fit: contain;">
+                </div>
+            </div>
+
+            <!-- Title Section -->
+            <div class="title-section">
+                <h1 class="main-title">eRoyal</h1>
+                <p class="sub-title">HOUSING SOCIETY MANAGEMENT SYSTEM</p>
+            </div>
+
+            <!-- Features -->
+            <div class="features-container">
+                
+                <div class="feature-box">
+                    <h3>Administrative Control</h3>
+                    <ul>
+                        <li>Automated Bill Generation & Distribution</li>
+                        <li>Society-wide Announcement Broadcasting</li>
+                        <li>Real-time Complaint Tracking & Analytics</li>
+                        <li>Security Personnel Management</li>
+                    </ul>
+                </div>
+
+                <div class="feature-box">
+                    <h3>Resident Portal</h3>
+                    <ul>
+                        <li>Digital Complaint Submission with Attachments</li>
+                        <li>Real-time Vehicle Entry/Exit Notifications</li>
+                        <li>Online Bill Management & Payment History</li>
+                        <li>Community Bulletins & Local Notices</li>
+                    </ul>
+                </div>
+
+                <div class="feature-box">
+                    <h3>Security & Logistics</h3>
+                    <ul>
+                        <li>QR-Based Digital Gate Entry System</li>
+                        <li>Automated Vehicle Log Entry/Exit Tracking</li>
+                        <li>Visitor Management & Guest Pre-authorization</li>
+                        <li>Emergency Alert Integration</li>
+                    </ul>
+                </div>
+
+                <div class="tech-stack">
+                    <span class="tech-tag">React Native</span>
+                    <span class="tech-tag">Firebase Firestore</span>
+                    <span class="tech-tag">Expo Router</span>
+                    <span class="tech-tag">Firebase Auth</span>
+                    <span class="tech-tag">TypeScript</span>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+                <div class="supervisor-box">
+                    <p style="font-size: 14px; opacity: 0.7;">Project Supervisor</p>
+                    <p class="supervisor-name">Mr. Muhammad Rauf</p>
+                </div>
+
+                <div class="students-grid">
+                    <div class="student-item">
+                        <p class="student-name">Mudassir Ahmed</p>
+                        <p class="student-id">70158112</p>
+                    </div>
+                    <div class="student-item">
+                        <p class="student-name">Zeeshan Sarim</p>
+                        <p class="student-id">70158046</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+</html>
