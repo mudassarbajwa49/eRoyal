@@ -48,3 +48,11 @@ serviceAccountKey.json
 service-account-key.json
 functions/.env
 
+# Documentation and Assignments
+docs/
+assignment_workspace/
+combined_master_study_plan.md
+eRoyal_Project_Overview.md
+three_day_master_study_plan.md
+poster.html
+scripts/generate_eroyal_documentation.cjs
